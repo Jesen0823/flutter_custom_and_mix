@@ -22,8 +22,8 @@ class BeHexagon {
   // 是否选中
   final bool isSelected;
 
-  // 优化：一次性生成Path并缓存，不可变对象仅计算一次
-  late final Path _path;
+  // 优化：懒加载避免主线程任务太重，一次性生成Path并缓存，不可变对象仅计算一次
+  Path? _path;
 
   BeHexagon({
     required this.id,
@@ -37,7 +37,10 @@ class BeHexagon {
   }
 
   // 获取六边形的绘制路径
-  Path get path =>_path;
+  Path get path {
+    _path ??= _createHexagonPath();
+    return _path!;
+  }
 
   /// 一次性生成六边形路径（仅执行一次）
   Path _createHexagonPath() {

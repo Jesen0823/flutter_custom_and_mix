@@ -30,6 +30,22 @@ import 'package:shared_preferences/shared_preferences.dart';
 // 参数缓存：将几何计算的中间值（如_colStep/_rowStep）缓存为成员变量，避免重复计算；
 // 加载中状态：异步初始化时显示加载动画，避免 UI 卡顿；
 // 按行拆分缓存：将六边形列表按行拆分后缓存，避免每次绘制时重复拆分。
+//
+// bug:【打开页面绘制完成后，点击六边形，该六边形会变色，命中测试正常。但是在向右滑动，向下滑动后，点击六边形，它前面相邻的六边形会变色，而不是被点击的六边形，这不符合预期。而且命中测试日志显示六边形id分别为0,2,4,6,8，也就是全为偶数，不是连续的自然数。】
+// 【原因与解决方案：】
+// 坐标参考系混乱：
+// 外层垂直SingleChildScrollView和内层水平SingleChildScrollView嵌套后，滑动会产生两层偏移；
+// TapDownDetails.localPosition是相对于直接父组件（内层水平 ScrollView） 的视口坐标，而非六边形布局的 “全局坐标”；
+// 滑动后，这个局部坐标没有补偿两层 ScrollView 的偏移量，导致点击位置映射到六边形布局时发生 “偏移错位”，看起来是 “点击 A，B 变色”。
+// 命中 ID 不连续（全为偶数）：
+// 滑动后的坐标偏移刚好让点击位置落在 “偶数列” 的六边形路径内（ID 按 “行优先” 生成：行 0 列 0=0、行 0 列 1=1、行 0 列 2=2...）；
+// 本质是坐标映射错误导致的 “选择性命中”，而非 ID 生成逻辑问题。
+// 分块绘制的叠加影响：按行分块后，每行的CustomPaint是独立绘制层，滑动后的坐标未结合行偏移计算，进一步放大了错位问题。
+// 解决方案核心思路
+// 统一坐标参考系：通过GlobalKey获取六边形布局的真实全局位置，将点击的 “视口坐标” 转换为 “布局内全局坐标”；
+// 简化 ScrollView 结构：用一层SingleChildScrollView（支持双向滚动，通过NeverScrollableScrollPhysics
+// 配合ScrollController实现）替代嵌套，避免多层偏移叠加；
+// 分块命中优化：先根据转换后的坐标定位到目标行，再在该行内进行命中测试，既保证精准性，又提升性能。
 
 // 持久化key常量
 const String _selectedHexIdsKey = 'selected_hexagon_ids';
@@ -103,6 +119,13 @@ class _HexagonHiveState extends State<BeHexagonHive> {
   late double _finalColStep;
   late double _finalRowStep;
 
+  // 修正：添加GlobalKey获取布局真实位置
+  final GlobalKey _hiveGlobalKey = GlobalKey();
+
+  // 修正：双向滚动控制器，代替嵌套ScrollView
+  final ScrollController _horizontalScrollCtrl = ScrollController();
+  final ScrollController _verticalScrollCtrl = ScrollController();
+
   Future<void> _initPrefs() async {
     _prefs = await SharedPreferences.getInstance();
     setState(() => _isLoading = false);
@@ -111,8 +134,18 @@ class _HexagonHiveState extends State<BeHexagonHive> {
   @override
   void initState() {
     super.initState();
-    // 异步初始化：先加载持久化数据，再初始化布局
-    _initPrefs().then((_) => _initHexagons());
+    // 异步初始化，避免阻塞主线程：先加载持久化数据，再初始化布局
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _initPrefs().then((_) => _initHexagons());
+    });
+  }
+
+  @override
+  void dispose() {
+    // 释放滚动控制器
+    _horizontalScrollCtrl.dispose();
+    _verticalScrollCtrl.dispose();
+    super.dispose();
   }
 
   @override
@@ -129,26 +162,45 @@ class _HexagonHiveState extends State<BeHexagonHive> {
 
   // 处理点击事件：判断点击位置并切换六边形颜色
   void _handleTapDown(TapDownDetails details) {
-    final Offset tapPos = details.localPosition;
+    // TapDownDetails.localPosition是相对于直接父组件（内层水平 ScrollView） 的视口坐标，而非六边形布局的 “全局坐标”；
+    // 滑动后，这个局部坐标没有补偿两层 ScrollView 的偏移量，导致点击位置映射到六边形布局时发生 “偏移错位”，看起来是 “点击 A，B 变色”。
+    // 修正4：精准命中测试（先定位行，再定位列）
+    final Offset localPos = _convertGlobalToLocal(details.globalPosition);
     if (kDebugMode) {
-      print("点击坐标：$tapPos");
+      print("转换后点击坐标：$localPos");
+    }
+    // 2. 先定位目标行（根据Y坐标）
+    int targetRow = -1;
+    for (int row = 0; row < _rowHexagons.length; row++) {
+      final rowYStart = row * _finalRowStep;
+      final rowYEnd = rowYStart + _finalRowStep;
+      if (localPos.dy >= rowYStart && localPos.dy <= rowYEnd) {
+        targetRow = row;
+        break;
+      }
     }
 
-    // 遍历找到被点击的六边形，生成新列表
-    setState(() {
-      _hexagons = _hexagons.map((hex) {
-        if (hex.containsPoint(tapPos)) {
-          // 点击命中：返回新的Hexagon实例
-          return hex.toggleSelected();
+    if (targetRow == -1) return; // 未命中任何行
+
+    // 定位目标六边形
+    final List<BeHexagon> targetRowHex = _rowHexagons[targetRow];
+    for (final hex in targetRowHex) {
+      if (hex.containsPoint(localPos)) {
+        if (kDebugMode) {
+          print("命中六边形ID：${hex.id}");
         }
-        // 未命中,返回原实例
-        return hex;
-      }).toList();
-      // 重新按行拆分
-      _rowHexagons = _splitHexagonsByRow();
-    });
-    // 异步持久化
-    _saveSelectedIdsToPrefs();
+        setState(() {
+          _hexagons = _hexagons
+              .map((h) => h.id == hex.id ? h.toggleSelected() : h)
+              .toList();
+          _rowHexagons[targetRow] = _rowHexagons[targetRow]
+              .map((h) => h.id == hex.id ? h.toggleSelected() : h)
+              .toList();
+        });
+        _saveSelectedIdsToPrefs();
+        break;
+      }
+    }
   }
 
   void _initHexagons() {
@@ -163,7 +215,7 @@ class _HexagonHiveState extends State<BeHexagonHive> {
     final double r = R * math.sqrt(3) / 2; // 内接圆半径 ≈0.866*side（蜂窝垂直间距核心）
     _colStep = 1.5 * R;
     _rowStep = (R / 2) + r;
-    // 叠加统一gap后的最终间距（行列间距比例一致）
+    // 叠加统一gap后的最终间距
     _finalColStep = _colStep + gap;
     _finalRowStep = _rowStep + gap;
 
@@ -198,9 +250,9 @@ class _HexagonHiveState extends State<BeHexagonHive> {
             sideLength: side,
             normalColor: widget.normalColor,
             selectedColor: widget.selectedColor,
+            isSelected: selectedIds.contains(hexId - 1),
           ),
         );
-        hexId++;
       }
     }
 
@@ -235,6 +287,16 @@ class _HexagonHiveState extends State<BeHexagonHive> {
         .map((hex) => hex.id.toString())
         .toList();
     await _prefs.setStringList(_selectedHexIdsKey, selectedStrIds);
+  }
+
+  /// 修正： 点击坐标转换，将全局坐标转换为六边形局部坐标
+  Offset _convertGlobalToLocal(Offset globalPosition) {
+    // 获取六边形布局的RenderBox（真实位置和尺寸）
+    final RenderBox? renderBox =
+        _hiveGlobalKey.currentContext?.findRenderObject() as RenderBox?;
+    if (renderBox == null) return Offset.zero;
+    // 将全局坐标转换为布局内的局部坐标（抵消ScrollView偏移和布局自身位置）
+    return renderBox.globalToLocal(globalPosition);
   }
 
   /// 按行拆分六边形列表
@@ -334,19 +396,55 @@ class _HexagonHiveState extends State<BeHexagonHive> {
     if (_isLoading) {
       return const Center(child: CircularProgressIndicator());
     }
+    // 核心修复1：计算可用滚动高度（解决溢出+滑动问题）
+    final mediaQuery = MediaQuery.of(context);
+    final appBarHeight = AppBar().preferredSize.height;
+    final systemPadding = mediaQuery.padding; // 顶部状态栏+底部导航栏 padding
+    final pagePadding = const EdgeInsets.all(20.0).vertical; // 页面上下padding
+    final buttonAreaHeight = 72.0; // 操作按钮区域高度（按钮+padding）
+    // 可用滚动高度 = 屏幕总高度 - AppBar高度 - 系统padding - 页面padding - 按钮区域高度
+    final availableScrollHeight =
+        mediaQuery.size.height -
+        appBarHeight -
+        systemPadding.top -
+        systemPadding.bottom -
+        pagePadding -
+        buttonAreaHeight;
+
     return Column(
-      mainAxisSize: MainAxisSize.min,
+      mainAxisSize: MainAxisSize.max,
+      crossAxisAlignment: CrossAxisAlignment.center,
       children: [
         // 快处理按钮
         _buildQuickOperations(),
-        // 绘制区域：根据总数选择分块/整体绘制
-        GestureDetector(
-          onTapDown: _handleTapDown,
-          child: SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: _totalCount > _chunkThreshold
-                ? _buildChunkedLayout()
-                : _buildWholeLayout(),
+        // 核心修复2：滚动容器添加明确高度约束，解决无法滑动和溢出
+        Expanded(
+          // 绘制区域：根据总数选择分块/整体绘制
+          child: GestureDetector(
+            onTapDown: _handleTapDown,
+            child: Container(
+              constraints: BoxConstraints(
+                maxHeight: availableScrollHeight, // 限制最大高度，避免溢出
+                maxWidth: mediaQuery.size.width - pagePadding, // 限制最大宽度
+              ),
+              child: SingleChildScrollView(
+                controller: _verticalScrollCtrl,
+                scrollDirection: Axis.vertical,
+                physics: const BouncingScrollPhysics(), // 优化滑动体验
+                child: SingleChildScrollView(
+                  controller: _horizontalScrollCtrl,
+                  scrollDirection: Axis.horizontal,
+                  physics: const BouncingScrollPhysics(),
+                  child: Container(
+                    key: _hiveGlobalKey,
+                    padding: const EdgeInsets.symmetric(vertical: 8.0),
+                    child: _totalCount > _chunkThreshold
+                        ? _buildChunkedLayout()
+                        : _buildWholeLayout(),
+                  ),
+                ),
+              ),
+            ),
           ),
         ),
       ],
