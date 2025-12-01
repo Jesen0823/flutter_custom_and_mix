@@ -51,7 +51,7 @@ class MyApp extends StatelessWidget {
           bodyMedium: TextStyle(color: Colors.black87), // 默认文本颜色
         ),
       ),
-      home: const BeHexagonHiveExample(),
+      home: const UserInheritedWidgetExample(),
       debugShowCheckedModeBanner: false,
     );
   }
