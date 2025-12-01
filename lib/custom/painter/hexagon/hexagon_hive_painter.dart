@@ -60,5 +60,5 @@ class HexagonHivePainter extends CustomPainter {
   }
 
   @override
-  bool shouldRebuildSemantics(covariant CustomPainter oldDelegate) => false;
+  bool shouldRebuildSemantics(covariant HexagonHivePainter oldDelegate) => false;
 }

@@ -5,6 +5,7 @@ import 'package:flutter_custom_and_mix/custom/example/native_platform_view_examp
 import 'package:flutter_custom_and_mix/custom/example/user_inherited_widget_example.dart';
 
 import 'custom/example/align_bottom_right_example.dart';
+import 'custom/example/be_hexagon_hive_example.dart';
 import 'custom/example/custom_gradient_diagonal_card_example.dart';
 import 'custom/example/custom_line_chart_painter_example.dart';
 import 'custom/example/custom_search_bar_example.dart';
@@ -50,7 +51,7 @@ class MyApp extends StatelessWidget {
           bodyMedium: TextStyle(color: Colors.black87), // 默认文本颜色
         ),
       ),
-      home: const HexagonHiveExample(),
+      home: const BeHexagonHiveExample(),
       debugShowCheckedModeBanner: false,
     );
   }
