@@ -51,7 +51,7 @@ class MyApp extends StatelessWidget {
           bodyMedium: TextStyle(color: Colors.black87), // 默认文本颜色
         ),
       ),
-      home: const UserInheritedWidgetExample(),
+      home: const LoadingButtonWidgetExample(),
       debugShowCheckedModeBanner: false,
     );
   }

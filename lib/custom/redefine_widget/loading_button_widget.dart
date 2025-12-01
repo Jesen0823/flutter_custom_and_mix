@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 
@@ -16,22 +18,42 @@ class LoadingButtonWidget extends StatefulWidget {
   // 按钮文字
   final String text;
 
-  // 点击回调
-  final VoidCallback? onPressed;
+  // 点击回调,支持同步void或异步Future<void>
+  final FutureOr<void> Function()? onPressed;
 
-  // 按钮颜色
-  final Color color;
+  /// 按钮激活状态颜色
+  final Color activeColor;
 
-  // 文字颜色
+  /// 按钮禁用状态颜色
+  final Color disabledColor;
+
+  /// 文字颜色
   final Color textColor;
+
+  /// 加载指示器颜色
+  final Color indicatorColor;
+
+  /// 按钮圆角
+  final double borderRadius;
+
+  /// 按钮内边距
+  final EdgeInsetsGeometry padding;
+
+  /// 是否禁止重复点击（默认true，防止并发请求）
+  final bool disableDuplicateClick;
 
   const LoadingButtonWidget({
     super.key,
     required this.text,
     this.onPressed,
-    this.color = Colors.blue,
+    this.activeColor = Colors.blue,
+    this.disabledColor = Colors.grey,
     this.textColor = Colors.white,
-  });
+    this.indicatorColor = Colors.white,
+    this.borderRadius = 8.0,
+    this.padding = const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+    this.disableDuplicateClick = true,
+  }) : assert(borderRadius >= 0, "圆角不能为负数");
 
   @override
   State<LoadingButtonWidget> createState() => _LoadingButtonWidgetState();
@@ -42,13 +64,21 @@ class _LoadingButtonWidgetState extends State<LoadingButtonWidget> {
 
   @override
   Widget build(BuildContext context) {
+    // 按钮是否可用：未加载中 + 回调不为空
+    final bool isEnabled = !_isLoading && widget.onPressed != null;
+
     return ElevatedButton(
       style: ElevatedButton.styleFrom(
-        backgroundColor: widget.color,
-        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        backgroundColor: isEnabled ? widget.activeColor : widget.disabledColor,
+        padding: widget.padding,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(widget.borderRadius),
+        ),
+        // 禁用状态下的透明度
+        disabledBackgroundColor: widget.disabledColor.withAlpha(160),
+        disabledForegroundColor: widget.textColor.withAlpha(140),
       ),
-      onPressed: _isLoading ? null : _handlePressed,
+      onPressed: isEnabled ? _handlePressed : null,
       child: _buildButtonContent(),
     );
   }
@@ -58,39 +88,70 @@ class _LoadingButtonWidgetState extends State<LoadingButtonWidget> {
     if (_isLoading) {
       return Row(
         mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          const SizedBox(
+          SizedBox(
             width: 16,
             height: 16,
             child: CircularProgressIndicator(
               strokeWidth: 2,
-              valueColor: AlwaysStoppedAnimation(Colors.white),
+              valueColor: AlwaysStoppedAnimation(widget.indicatorColor),
+              backgroundColor: Colors.transparent,
             ),
           ),
           const SizedBox(width: 8),
-          Text("加载中...", style: TextStyle(color: widget.textColor)),
+          Text(
+            "加载中...",
+            style: TextStyle(color: widget.textColor, fontSize: 14),
+          ),
         ],
       );
     } else {
-      return Text(widget.text, style: TextStyle(color: widget.textColor));
+      return Text(
+        widget.text,
+        style: TextStyle(
+          color: widget.textColor,
+          fontSize: 14,
+          fontWeight: FontWeight.w500,
+        ),
+      );
     }
   }
 
-  void _handlePressed() async {
-    if (widget.onPressed == null) return;
-    setState(() => _isLoading = true);
+  Future<void> _handlePressed() async {
+    // 防重复点击（如果启用）
+    if (widget.disableDuplicateClick && _isLoading) return;
+    // 标记为加载中（立即更新UI，防止重复点击）
+    _setLoadingState(true);
 
     try {
-      // await widget.onPressed!(); //TODO bug
-      widget.onPressed!();
+      // 执行回调（区分同步/异步回调，避免编译错误）
+      final result = widget.onPressed!();
+      // 若回调返回Future，则等待异步完成
+      if (result is Future) {
+        await result;
+      }
+    } catch (e, stackTrace) {
+      // 生产环境：捕获所有异常，避免崩溃，同时上报日志
+      debugPrint('LoadingButton 点击回调异常：$e\n$stackTrace');
+      // 可选：触发全局异常上报（如Sentry、Bugly等）
+      // CrashReport.report(e, stackTrace, tag: 'LoadingButton');
+      rethrow; // 如需上层处理异常，可抛出；否则直接捕获消化
     } finally {
-      // 恢复按钮状态（使用SchedulerBinding确保异步操作完成后更新）
+      // 恢复按钮状态（使用SchedulerBinding确保异步操作完成后更新,避免在build过程中执行setState）
       SchedulerBinding.instance.addPostFrameCallback((_) {
         if (mounted) {
-          setState(() {
-            _isLoading = false;
-          });
+          _setLoadingState(false);
         }
+      });
+    }
+  }
+
+  //统一设置加载状态（封装成方法，便于后续扩展）
+  void _setLoadingState(bool isLoading) {
+    if (_isLoading != isLoading) {
+      setState(() {
+        _isLoading = isLoading;
       });
     }
   }
