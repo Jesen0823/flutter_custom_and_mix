@@ -281,69 +281,39 @@ Flutter的`PageStorage`组件会根据`PageStorageKey`存储组件的状态（�
 - `currentState`：监听表单验证状态（结合`onChanged`），实现“验证通过后才激活登录按钮”。
 
 ### 案例3：PageStorageKey保存滚动位置
-**场景**：BottomNavigationBar切换页面时，保存每个页面ListView的滚动位置。
-```dart
-import 'package:flutter/material.dart';
+**场景**：BottomNavigationBar切换页面时，保存每个页面ListView的滚动位置。案例基于实际开发场景，实现PageStorage + PageStorageKey 的核心能力：
 
-class HomePage extends StatefulWidget {
-  const HomePage({super.key});
+- 保存多页面切换时的滚动位置（ListView/SingleChildScrollView）
+- 保存 TextField 输入内容（基于 PageStorage 持久化）
+- 处理列表嵌套的滚动冲突与位置保存
 
-  @override
-  State<HomePage> createState() => _HomePageState();
-}
+#### 代码路径：
+lib/keys/page_storage_key
 
-class _HomePageState extends State<HomePage> {
-  int _currentIndex = 0;
-
-  // 定义3个页面（每个页面用PageStorageKey保存滚动状态）
-  final List<Widget> _pages = [
-    // 页面1：商品列表（PageStorageKey标识）
-    ListView.builder(
-      key: const PageStorageKey("product_list"), // 核心：唯一标识，用于存储滚动状态
-      itemCount: 50,
-      itemBuilder: (context, index) => ListTile(title: Text("商品 ${index + 1}")),
-    ),
-    // 页面2：分类列表
-    ListView.builder(
-      key: const PageStorageKey("category_list"),
-      itemCount: 30,
-      itemBuilder: (context, index) => ListTile(title: Text("分类 ${index + 1}")),
-    ),
-    // 页面3：我的订单
-    ListView.builder(
-      key: const PageStorageKey("order_list"),
-      itemCount: 20,
-      itemBuilder: (context, index) => ListTile(title: Text("订单 ${index + 1}")),
-    ),
-  ];
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      body: PageStorage(
-        // 可选：指定存储容器，默认使用根节点的存储
-        bucket: PageStorageBucket(),
-        child: _pages[_currentIndex],
-      ),
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _currentIndex,
-        onTap: (index) => setState(() => _currentIndex = index),
-        items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.shop), label: "商品"),
-          BottomNavigationBarItem(icon: Icon(Icons.category), label: "分类"),
-          BottomNavigationBarItem(icon: Icon(Icons.receipt), label: "订单"),
-        ],
-      ),
-    );
-  }
-}
-```
+####  案例核心
+- **PageStorageKey 唯一性**：每个可滚动组件 / TextField 都有唯一的 key（如home_outer_scroll、discover_list），确保存储位置不冲突
+- **嵌套滚动处理**：内部 ListView 设置NeverScrollableScrollPhysics，交给外层 SingleChildScrollView 统一滚动，避免冲突
+- **TextField 持久化**：通过PageStorage.of(context).writeState/readState保存 / 读取输入内容
+- **页面状态保持**：使用IndexedStack而非PageView，确保切换页面时不销毁组件，PageStorage 能正常读写
 
 **核心要点**：  
 - 每个滚动组件（ListView）必须设置唯一的`PageStorageKey`，否则无法区分存储状态；
 - 若需要独立存储（如不同用户的状态隔离），可自定义`PageStorageBucket`；
 - 适用于所有需要恢复状态的组件（如输入框、滑块等，需配合`PageStorage`）。
 
+#### PageStorageKey注意点
+1. **PageStorage 原理**：Flutter 内置的存储桶（Bucket），通过PageStorageKey标识不同 Widget 的存储位置，数据保存在 Element 树中
+2. **Key 的作用域**：PageStorageKey 的 value 必须唯一，否则会覆盖其他组件的存储数据
+3. **滚动组件注意事项**：
+   - shrinkWrap: true：嵌套列表必须包裹内容，避免高度无限
+   - physics：合理设置滚动物理属性，解决嵌套滚动冲突
+4. **TextField 持久化**：默认 TextField 的输入状态由TextEditingController管理，结合 PageStorage 可实现跨页面持久化
+
+#### 其他场景
+
+1. 多 Tab 页（TabBarView）：需给每个 Tab 页面的滚动组件设置独立 PageStorageKey
+2. 动态列表（如网络请求加载）：PageStorageKey 需绑定列表唯一标识（如接口 ID）
+3. 自定义存储桶：通过PageStorage(bucket: PageStorageBucket(), child: ...)实现隔离存储
 
 ### 案例4：LabeledGlobalKey实现动态表单验证
 **场景**：动态添加的表单（如添加联系人，可新增多个手机号输入框，每个输入框独立验证）。
