@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'keys/example/global_key_login_page_example_app.dart';
 import 'keys/example/value_key_shopping_cart_page_example.dart';
+import 'keys/labeled_global_key/labeled_global_key_dynamic_form_page.dart';
 import 'keys/page_storage_key/page_storage_key_main_page.dart';
 
 void main() {
@@ -43,7 +44,7 @@ class MyApp extends StatelessWidget {
           bodyMedium: TextStyle(color: Colors.black87), // 默认文本颜色
         ),
       ),
-      home: PageStorageKeyMainPage(),
+      home: LabeledGlobalKeyDynamicFormPage(),
       debugShowCheckedModeBanner: false,
     );
   }
