@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_custom_and_mix/custom/inherited_widget/model.dart';
-import 'package:flutter_custom_and_mix/custom/inherited_widget/user_inherited_widget.dart';
 import 'package:flutter_custom_and_mix/custom/inherited_widget/user_provider.dart';
 
 class UserInheritedWidgetExample extends StatelessWidget {

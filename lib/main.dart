@@ -1,20 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_custom_and_mix/custom/example/custom_tag_flow_layout_example.dart';
-import 'package:flutter_custom_and_mix/custom/example/custom_wave_clip_example.dart';
-import 'package:flutter_custom_and_mix/custom/example/native_platform_view_example.dart';
-import 'package:flutter_custom_and_mix/custom/example/user_inherited_widget_example.dart';
 
-import 'custom/example/align_bottom_right_example.dart';
-import 'custom/example/be_hexagon_hive_example.dart';
-import 'custom/example/custom_gradient_diagonal_card_example.dart';
-import 'custom/example/custom_line_chart_painter_example.dart';
-import 'custom/example/custom_search_bar_example.dart';
-import 'custom/example/hexagon_hive_example.dart';
-import 'custom/example/loading_button_widget_example.dart';
-import 'my_theme_color.dart';
+import 'keys/example/global_key_login_page_example_app.dart';
+import 'keys/example/value_key_shopping_cart_page_example.dart';
 
 void main() {
-  runApp(const MyApp());
+  //runApp(const MyApp());
+  runApp(const GlobalKeyLoginPageExampleApp());
 }
 
 class MyApp extends StatelessWidget {
@@ -51,7 +42,7 @@ class MyApp extends StatelessWidget {
           bodyMedium: TextStyle(color: Colors.black87), // 默认文本颜色
         ),
       ),
-      home: const LoadingButtonWidgetExample(),
+      home: ValueKeyShoppingCartPageExample(),
       debugShowCheckedModeBanner: false,
     );
   }

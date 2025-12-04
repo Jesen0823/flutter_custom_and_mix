@@ -14,6 +14,12 @@ import 'package:flutter/scheduler.dart';
 // 个性化输入框：如仅允许输入数字的 TextField、带验证码的输入框；
 // 定制化列表：如可侧滑删除的 ListView。
 //
+/// 还可以进一步优化：
+/// 异步回调优先：建议业务中优先使用返回 Future 的异步回调，便于统一控制加载状态；
+// 异常处理策略：根据业务需求选择「捕获消化异常」或「抛出给上层处理」，避免吞掉关键异常；
+// 样式统一：可基于该组件封装项目专属的「主题按钮」（如 PrimaryLoadingButton、DangerLoadingButton），统一产品视觉风格；
+// 性能优化：若按钮频繁使用（如列表项中），可通过 const 构造函数、缓存样式等方式优化性能；
+// 测试覆盖：需测试「同步回调」「异步回调」「异常场景」「组件销毁时回调完成」四种核心场景，确保状态切换正确。
 class LoadingButtonWidget extends StatefulWidget {
   // 按钮文字
   final String text;
