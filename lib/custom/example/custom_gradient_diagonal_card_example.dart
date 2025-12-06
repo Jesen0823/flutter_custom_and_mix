@@ -12,82 +12,68 @@ class CustomGradientDiagonalCardExample extends StatelessWidget {
         backgroundColor: Colors.deepPurple,
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            // 示例1：左到右渐变斜角卡片（商品活动卡）
-            CustomGradientDiagonalCard(
-              gradientColors: [Colors.deepPurple, Colors.pinkAccent,Colors.orangeAccent],
-              diagonalHeight: 25,
-              padding: const EdgeInsets.all(20),
-              child: Column(
-                children: [
-                  const Text(
-                    "618年中大促",
-                    style: TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            children: [
+              // 左侧斜角示例
+              CustomGradientDiagonalCard(
+                diagonalHeight: 24,
+                gradient: RadialGradient(
+                  radius: 3.0,
+                  stops:const [0.2,0.4,0.7] ,
+                  tileMode: TileMode.decal,
+                  colors: [Colors.redAccent, Colors.purple.shade400, Colors.blue.shade600],
+                ),
+                padding: const EdgeInsets.all(20),
+                onTap: () => ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('卡片被点击')),
+                ),
+                child: const Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '左侧斜角卡片',
+                      style: TextStyle(color: Colors.white, fontSize: 34, fontWeight: FontWeight.bold),
                     ),
-                  ),
-                  const SizedBox(height: 8),
-                  const Text(
-                    "全场商品满300减50，限时抢购！",
-                    style: TextStyle(fontSize: 16, color: Colors.white70),
-                  ),
-                  const SizedBox(height: 12),
-                  ElevatedButton(
-                    onPressed: null,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.white,
-                      foregroundColor: Colors.deepPurple,
+                    SizedBox(height: 8),
+                    Text(
+                      '精准命中测试 · 增量更新 · 参数校验',
+                      style: TextStyle(color: Colors.white70, fontSize: 14),
                     ),
-                    child: const Text("立即抢购"),
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ),
-            const SizedBox(height: 30),
-            // 示例2：右到左渐变斜角卡片（用户标签卡）
-            CustomGradientDiagonalCard(
-              gradientColors: [Colors.teal, Colors.cyanAccent],
-              diagonalHeight: 15,
-              gradientDirection: GradientDirection.rightToLeft,
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-              child: const Row(
-                children: [
-                  CircleAvatar(
-                    radius: 30,
-                    backgroundImage: NetworkImage(
-                      "https://picsum.photos/200/200",
+              const SizedBox(height: 24),
+              // 右侧斜角示例
+              CustomGradientDiagonalCard(
+                diagonalHeight: 32,
+                diagonalLocation: DiagonalLocation.rightBottom,
+                gradient: LinearGradient(
+                  begin: Alignment.topRight,
+                  end: Alignment.bottomLeft,
+                  colors: [Colors.teal.shade400, Colors.green.shade600,Colors.yellow],
+                ),
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                onTap: () => ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('卡片被点击')),
+                ),
+                child: const Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Text(
+                      '右侧斜角卡片',
+                      style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
                     ),
-                  ),
-                  SizedBox(width: 16),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        "Flutter开发者",
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                        ),
-                      ),
-                      SizedBox(height: 4),
-                      Text(
-                        "自定义RenderObject实战",
-                        style: TextStyle(fontSize: 14, color: Colors.white70),
-                      ),
-                    ],
-                  ),
-                ],
+                    SizedBox(height: 8),
+                    Text(
+                      '边界处理 · 语义化支持',
+                      style: TextStyle(color: Colors.white70, fontSize: 14),
+                    ),
+                  ],
+                ),
               ),
-            ),
-          ],
-        ),
-      ),
+            ],
+          ),),
     );
   }
 }

@@ -233,6 +233,8 @@ Flutter 中RenderObject的performLayout()方法遵循局部坐标系规则，核
 
 渐变斜角卡片是电商 / 社交 APP 的高频 UI 需求（如活动卡片、商品标签卡），默认 Flutter Widget 难以实现精准的斜角渐变效果，通过自定义RenderObject可高效实现该效果，且性能优于ClipPath+DecoratedBox的组合方案（减少渲染节点嵌套）。
 
+<img src="./assets/images/gradient_diagonal.jpg" alt="gradient_diagonal" style="zoom:50%;" />
+
 ##### 🀄解决问题：
 
 突破Flutter Widget 难以实现精准的斜角渐变效果，以及异形边界区域的精准命中测试。
