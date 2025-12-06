@@ -29,16 +29,22 @@ class CustomTagFlowLayoutExample extends StatelessWidget {
           lineHeight: 36.0,
           mainAxisAlignment: MainAxisAlignment.start,
           children: tags.map((tag) {
-            return Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12.0),
-              decoration: BoxDecoration(
-                color: Colors.pink.withAlpha(120),
-                borderRadius: BorderRadius.circular(16.0),
-              ),
-              child: Text(
-                tag,
-                textAlign: TextAlign.center,
-                style: const TextStyle(color: Colors.blue),
+            return RepaintBoundary(
+              child: Container(
+                alignment: Alignment.center,
+                padding: const EdgeInsets.symmetric(horizontal: 12.0),
+                decoration: BoxDecoration(
+                  color: Colors.pink.withAlpha(120),
+                  borderRadius: BorderRadius.circular(16.0),
+                ),
+                child: TextButton(
+                  onPressed: () {},
+                  child: Text(
+                    tag,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(color: Colors.blue),
+                  ),
+                ),
               ),
             );
           }).toList(),

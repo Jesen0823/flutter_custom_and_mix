@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'custom/example/custom_gradient_diagonal_card_example.dart';
+import 'custom/example/custom_tag_flow_layout_example.dart';
 import 'keys/example/global_key_login_page_example_app.dart';
 import 'keys/example/value_key_shopping_cart_page_example.dart';
 import 'keys/labeled_global_key/labeled_global_key_dynamic_form_page.dart';
@@ -46,7 +47,7 @@ class MyApp extends StatelessWidget {
           bodyMedium: TextStyle(color: Colors.black87), // 默认文本颜色
         ),
       ),
-      home: CustomGradientDiagonalCardExample(),
+      home: CustomTagFlowLayoutExample(),
       debugShowCheckedModeBanner: false,
     );
   }

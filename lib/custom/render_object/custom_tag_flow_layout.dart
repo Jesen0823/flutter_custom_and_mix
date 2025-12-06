@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 
@@ -32,10 +33,16 @@ class CustomTagFlowLayout extends MultiChildRenderObjectWidget {
     this.mainAxisAlignment = MainAxisAlignment.start,
   }) : assert(
          horizontalSpacing >= 0,
-         "Parameter 'horizontalSpacing >= 0' is must.",
+         "The parameter horizontalSpacing cannot be a negative number.",
        ),
-       assert(verticalSpacing >= 0),
-       assert(lineHeight >= 0); // 行内对齐方式
+       assert(
+         verticalSpacing >= 0,
+         "The parameter verticalSpacing cannot be a negative number.",
+       ),
+       assert(
+         lineHeight >= 0,
+         "The parameter lineHeight cannot be a negative number.",
+       ); // 行内对齐方式
 
   @override
   RenderObject createRenderObject(BuildContext context) {
@@ -86,7 +93,7 @@ class RenderCustomTagFlowLayout extends RenderBox
        _lineHeight = lineHeight,
        _mainAxisAlignment = mainAxisAlignment;
 
-  // 对外暴露的属性
+  // 对外暴露的属性,加类型校验+避免重复标记布局
   double get horizontalSpacing => _horizontalSpacing;
 
   set horizontalSpacing(double value) {
@@ -108,7 +115,7 @@ class RenderCustomTagFlowLayout extends RenderBox
   double get lineHeight => _lineHeight;
 
   set lineHeight(double value) {
-    assert(lineHeight >= 0);
+    assert(value >= 0);
     if (_lineHeight == value) return;
     _lineHeight = value;
     markNeedsLayout();
@@ -135,92 +142,117 @@ class RenderCustomTagFlowLayout extends RenderBox
   void performLayout() {
     final BoxConstraints constraints = this.constraints;
     final double maxWidth = constraints.maxWidth;
-    if (maxWidth == 0) {
-      size = Size.zero;
-      return;
+    // 缓存局部变量，减少实例属性访问开销
+    final double localHorSpacing = horizontalSpacing;
+    final double localVertSpacing = verticalSpacing;
+    final double localLineHeight = lineHeight;
+    if (kDebugMode) {
+      print('开始布局 performLayout');
+      print(
+        '约束maxWidth: $maxWidth, 行高: $localLineHeight, 水平间距: $localHorSpacing, 垂直间距: $localVertSpacing',
+      );
     }
 
-    // 子组件迭代器
+    // 空约束/无孩子快速返回
     final RenderBox? firstChild = this.firstChild;
-    if (firstChild == null) {
-      size = Size(maxWidth, 0);
+    if (maxWidth == 0 || firstChild == null) {
+      size = firstChild == null ? Size(maxWidth, 0) : Size.zero;
+      if (kDebugMode) {
+        print('布局结果：空约束/无孩子，尺寸=$size');
+        print('布局结束');
+      }
       return;
     }
-
     double currentX = 0.0; // 当前行的X坐标
     double currentY = 0.0; // 当前行的Y坐标
-    double totalHeight = 0.0; // 总高度
-    List<RenderBox> currentLineChildren = []; // 当前行的子组件
-    List<double> currentLineWidths = []; // 当前行子组件宽度
+    List<RenderBox> currentLineChildren = []; // 当前行孩子
+    double currentLineUsedWidth = 0.0; // // 当前行已用宽度,含间距
 
     // 遍历所有子组件，计算布局
     RenderBox? child = firstChild;
+    int childIndex = 0; // 子组件索引，便于日志定位
     while (child != null) {
       // 布局子组件，传递约束，高度固定，宽度自适应
       child.layout(
         BoxConstraints(
           minWidth: 0,
-          maxWidth: maxWidth,
-          minHeight: lineHeight,
-          maxHeight: lineHeight,
+          maxWidth: double.infinity, // 让子组件自适应内容宽度
+          minHeight: localLineHeight,
+          maxHeight: localLineHeight,
         ),
         parentUsesSize: true,
       );
 
       final double childWidth = child.size.width;
       final double childHeight = child.size.height;
-      // 判断是否要换行
-      if (currentX + childWidth > maxWidth && currentX > 0) {
-        // 为当前行布局
+      if (kDebugMode) {
+            print('子组件$childIndex：内容宽=${childWidth.toStringAsFixed(2)}, 高=${childHeight.toStringAsFixed(2)}，当前行已用宽=${currentLineUsedWidth.toStringAsFixed(2)}');
+      }
+      // 换行判断：当前行已用宽度 + 子组件宽度 > 父容器最大宽度 且 当前行有内容
+      bool needWrap = (currentLineUsedWidth + childWidth > maxWidth) && (currentLineUsedWidth > 0);
+      if (needWrap) {
+        // 布局当前行
         _layoutCurrentLine(
           currentLineChildren: currentLineChildren,
-          currentLineWidths: currentLineWidths,
           currentY: currentY,
           maxWidth: maxWidth,
+          horSpacing: localHorSpacing,
         );
 
         // 重置行参数
-        currentY += lineHeight + verticalSpacing;
-        currentX = 0.0;
+        currentY += localLineHeight + localVertSpacing;
         currentLineChildren.clear();
-        currentLineWidths.clear();
+        currentLineUsedWidth = 0.0;
+        if (kDebugMode) {
+          print('子组件$childIndex：换行，新行Y=$currentY');
+        }
       }
 
       // 添加到当前行
       currentLineChildren.add(child);
-      currentLineWidths.add(childWidth);
-      currentX += childWidth + horizontalSpacing;
+      // 累加行宽：子组件宽度 +水平间距,最后一个子组件的间距后续会修正
+      currentLineUsedWidth += childWidth + localHorSpacing;
 
-      // 下一个子组件
+      // 下一个子组件,提前获取，减少重复调用
       child = childAfter(child);
+      childIndex++;
     }
     // 处理最后一行
     if (currentLineChildren.isNotEmpty) {
       _layoutCurrentLine(
         currentLineChildren: currentLineChildren,
-        currentLineWidths: currentLineWidths,
         currentY: currentY,
         maxWidth: maxWidth,
+        horSpacing: localHorSpacing,
       );
-      totalHeight = currentY + lineHeight;
     }
-    // 设置组件总尺寸
-    size = Size(maxWidth, constraints.constrainHeight(totalHeight));
+    // 计算总高度
+    final double totalHeight = currentY + (currentLineChildren.isNotEmpty ? localLineHeight : 0);
+    // 设置最终尺寸
+    size = constraints.constrain(Size(maxWidth, totalHeight));
+    if (kDebugMode) {
+      print('布局结果：总尺寸=$size');
+      print('布局结束');
+    }
   }
 
+  /// 单行布局逻辑
   void _layoutCurrentLine({
     required List<RenderBox> currentLineChildren,
-    required List<double> currentLineWidths,
     required double currentY,
     required double maxWidth,
+    required double horSpacing,
   }) {
-    final double totalChildWidth = currentLineWidths.fold(0, (a, b) => a + b);
-    final double totalSpacing =
-        (currentLineChildren.length - 1) * horizontalSpacing;
-    final double lineTotalWidth = totalSpacing + totalChildWidth;
-    double offsetX = 0.0;
+    // 计算当前行总宽度，不含最后一个子组件的多余间距
+    double lineTotalWidth = 0.0;
+    for (var child in currentLineChildren) {
+      lineTotalWidth += child.size.width;
+    }
+    // 加上子组件之间的间距（子组件数-1）
+    lineTotalWidth += (currentLineChildren.length - 1) * horSpacing;
 
-    // 根据对齐方式计算X起始坐标
+    // 根据对齐方式计算起始X
+    double offsetX = 0.0;
     switch (mainAxisAlignment) {
       case MainAxisAlignment.start:
         offsetX = 0.0;
@@ -231,17 +263,47 @@ class RenderCustomTagFlowLayout extends RenderBox
       case MainAxisAlignment.end:
         offsetX = maxWidth - lineTotalWidth;
         break;
-      default:
+      case MainAxisAlignment.spaceBetween:
         offsetX = 0.0;
+        break;
+      case MainAxisAlignment.spaceAround:
+        offsetX = (maxWidth - lineTotalWidth) / (2 * currentLineChildren.length);
+        break;
+      case MainAxisAlignment.spaceEvenly:
+        offsetX = (maxWidth - lineTotalWidth) / (currentLineChildren.length + 1);
+        break;
     }
 
-    // 设置子组件位置
+    // 调试日志
+    if (kDebugMode) {
+      print('单行布局：');
+      print('行孩子数：${currentLineChildren.length}，行总宽（内容+间距）=${lineTotalWidth.toStringAsFixed(2)}，起始X=${offsetX.toStringAsFixed(2)}');
+    }
+    // 设置每个子组件的位置
     for (int i = 0; i < currentLineChildren.length; i++) {
       final RenderBox child = currentLineChildren[i];
-      final TagLayoutParentData parentData =
-          child.parentData as TagLayoutParentData;
+      final TagLayoutParentData parentData = child.parentData as TagLayoutParentData;
       parentData.offset = Offset(offsetX, currentY);
-      offsetX += currentLineWidths[i] + horizontalSpacing;
+
+      // 调试日志：子组件最终位置
+      if (kDebugMode) {
+        print('行内子组件$i：偏移=${parentData.offset}，尺寸=${child.size}');
+      }
+
+      // 更新下一个子组件的X偏移（兼容多对齐方式）
+      switch (mainAxisAlignment) {
+        case MainAxisAlignment.spaceBetween:
+          offsetX += child.size.width + (i == currentLineChildren.length - 1 ? 0 : (maxWidth - lineTotalWidth) / (currentLineChildren.length - 1));
+          break;
+        case MainAxisAlignment.spaceAround:
+          offsetX += child.size.width + 2 * (maxWidth - lineTotalWidth) / (2 * currentLineChildren.length);
+          break;
+        case MainAxisAlignment.spaceEvenly:
+          offsetX += child.size.width + (maxWidth - lineTotalWidth) / (currentLineChildren.length + 1);
+          break;
+        default:
+          offsetX += child.size.width + horSpacing;
+      }
     }
   }
 
@@ -269,6 +331,41 @@ class RenderCustomTagFlowLayout extends RenderBox
   // 断言中调用 debugCannotComputeDryLayout 方法，并返回一个占位值 const Size(0, 0)。
   @override
   Size computeDryLayout(covariant BoxConstraints constraints) {
-    return Size(constraints.maxWidth, 0);
+    final double maxWidth = constraints.maxWidth;
+    if (maxWidth == 0) return Size.zero;
+
+    double currentX = 0.0;
+    double currentY = 0.0;
+    double currentLineUsedWidth = 0.0;
+    bool hasChildren = false;
+
+    // 干布局遍历，复用while循环
+    RenderBox? child = firstChild;
+    while (child != null) {
+      hasChildren = true;
+      // 干布局获取子组件内容宽度
+      final Size childSize = child.getDryLayout(
+        BoxConstraints(
+          minWidth: 0,
+          maxWidth: double.infinity,
+          minHeight: lineHeight,
+          maxHeight: lineHeight,
+        ),
+      );
+      final double childWidth = childSize.width;
+
+      // 换行判断
+      if ((currentLineUsedWidth + childWidth > maxWidth) && (currentLineUsedWidth > 0)) {
+        currentY += lineHeight + verticalSpacing;
+        currentLineUsedWidth = 0.0;
+      }
+
+      currentLineUsedWidth += childWidth + horizontalSpacing;
+      child = childAfter(child);
+    }
+
+    if (!hasChildren) return Size(maxWidth, 0);
+    final double totalHeight = currentY + lineHeight;
+    return constraints.constrain(Size(maxWidth, totalHeight));
   }
 }
