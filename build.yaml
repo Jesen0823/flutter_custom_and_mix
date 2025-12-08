@@ -1,0 +1,9 @@
+targets:
+  $default:
+    builders:
+      auto_route_generator:auto_router_generator:
+        enabled: true
+        options:
+          # 必须指定路由配置类的路径（匹配你的app_router.dart路径）
+          router_configs:
+            - lib/auto_router/router/app_router.dart # 替换为你实际的app_router.dart路径！

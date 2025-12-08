@@ -1,5 +1,8 @@
+import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
 
+import 'auto_router/router/app_router.dart';
+import 'auto_router/router/router_guards.dart';
 import 'custom/example/custom_gradient_diagonal_card_example.dart';
 import 'custom/example/custom_tag_flow_layout_example.dart';
 import 'keys/example/global_key_login_page_example_app.dart';
@@ -8,10 +11,35 @@ import 'keys/labeled_global_key/labeled_global_key_dynamic_form_page.dart';
 import 'keys/page_storage_key/page_storage_key_main_page.dart';
 import 'keys/unique_key/unique_verify_code_page.dart';
 
+// 全局路由实例（企业级：通过Provider管理，避免重复创建）
+final appRouter = AppRouter();
+
 void main() {
-  runApp(const MyApp());
+  //runApp(const MyApp());
+  runApp(const RouterApp());
   //runApp(const GlobalKeyLoginPageExampleApp());
 }
+
+class RouterApp extends StatelessWidget {
+  const RouterApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp.router(
+      title: 'AutoRouter Demo',
+      // 路由核心配置
+      routerDelegate: AutoRouterDelegate(
+        appRouter,
+        navigatorObservers: () => [
+          AutoRouteObserver(), // 路由生命周期监听（企业级：埋点/统计用）
+        ],
+      ),
+      routeInformationParser: appRouter.defaultRouteParser(),
+      theme: ThemeData(primarySwatch: Colors.blue),
+    );
+  }
+}
+
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
