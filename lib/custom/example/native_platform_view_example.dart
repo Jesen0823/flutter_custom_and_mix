@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../platform_view/native_text_view.dart';
+import '../platform_view/insert_native_view.dart';
 
 class NativePlatformViewExample extends StatelessWidget {
   const NativePlatformViewExample({super.key});
@@ -17,7 +17,7 @@ class NativePlatformViewExample extends StatelessWidget {
             SizedBox(
               width: 300,
               height: 100,
-              child: NativeTextView(),
+              child: InsertNativeView(),
             ),
           ],
         ),

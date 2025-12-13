@@ -7,7 +7,7 @@ import io.flutter.plugin.platform.PlatformView
 import io.flutter.plugin.platform.PlatformViewFactory
 
 // 实现PlatformViewFactory,创建NativeView
-class NativeViewFactory: PlatformViewFactory(StandardMessageCodec.INSTANCE) {
+class NativeViewFactory(private val context: Context): PlatformViewFactory(StandardMessageCodec.INSTANCE) {
     override fun create(
         context: Context,
         viewId: Int,
@@ -15,7 +15,7 @@ class NativeViewFactory: PlatformViewFactory(StandardMessageCodec.INSTANCE) {
     ): PlatformView {
         return object : PlatformView{
             override fun getView(): View {
-                return NativeCustomTextView(context)
+                return NativeCustomView(this@NativeViewFactory.context)
             }
 
             override fun dispose() {

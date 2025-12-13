@@ -1,8 +1,15 @@
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_custom_and_mix/custom/platform_view/insert_native_view.dart';
 
+import 'animation/implicitly_animated_widget/animated_container_product_card_page.dart';
+import 'animation/implicitly_animated_widget/animated_opacity_message_page.dart';
+import 'animation/implicitly_animated_widget/animated_positioned_cart_page.dart';
+import 'animation/implicitly_animated_widget/animated_size_bubble_page.dart';
+import 'animation/implicitly_animated_widget/animated_switcher_state_page.dart';
 import 'auto_router/router/app_router.dart';
 import 'auto_router/router/router_guards.dart';
+import 'communication/flut_call_native_page.dart';
 import 'custom/example/custom_gradient_diagonal_card_example.dart';
 import 'custom/example/custom_tag_flow_layout_example.dart';
 import 'keys/example/global_key_login_page_example_app.dart';
@@ -15,8 +22,8 @@ import 'keys/unique_key/unique_verify_code_page.dart';
 final appRouter = AppRouter();
 
 void main() {
-  //runApp(const MyApp());
-  runApp(const RouterApp());
+  runApp(const MyApp());
+  //runApp(const RouterApp());
   //runApp(const GlobalKeyLoginPageExampleApp());
 }
 
@@ -75,7 +82,7 @@ class MyApp extends StatelessWidget {
           bodyMedium: TextStyle(color: Colors.black87), // 默认文本颜色
         ),
       ),
-      home: CustomTagFlowLayoutExample(),
+      home: AnimatedSwitcherStatePage(),
       debugShowCheckedModeBanner: false,
     );
   }
