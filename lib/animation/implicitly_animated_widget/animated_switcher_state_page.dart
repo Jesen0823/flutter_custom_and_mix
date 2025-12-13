@@ -30,7 +30,7 @@ class _AnimatedSwitcherStatePageState extends State<AnimatedSwitcherStatePage> {
   @override
   void initState() {
     super.initState();
-    _loadDataRequest();
+    _loadDataRequest(false);
   }
 
   @override
@@ -55,24 +55,29 @@ class _AnimatedSwitcherStatePageState extends State<AnimatedSwitcherStatePage> {
     );
   }
 
-  void _loadDataRequest() {
+  void _loadDataRequest(bool reload) {
     setState(() => _currentState = ListLoadState.loading);
     // 延迟2秒返回数据
     Future.delayed(const Duration(seconds: 2), () {
       if (mounted) {
-        setState(() {
-          // 模拟空数据场景
-          _currentState = ListLoadState.empty;
-          // 模拟有数据返回
-          _currentState = ListLoadState.hasData;
-          _dataList.addAll(List.generate(12, (index) => "列表数据 ${index + 1}"));
-        });
+        if (reload) {
+          setState(() {
+            // 模拟有数据返回
+            _currentState = ListLoadState.hasData;
+            _dataList.addAll(List.generate(12, (index) => "列表数据 ${index + 1}"));
+          });
+        } else {
+          setState(() {
+            // 模拟空数据场景
+            _currentState = ListLoadState.empty;
+          });
+        }
       }
     });
   }
 
   // 重新加载数据
-  void _reloadData() => _loadDataRequest();
+  void _reloadData() => _loadDataRequest(true);
 
   // 状态构建对应Widget
   Widget _buildStateWidget() {
@@ -107,12 +112,13 @@ class _AnimatedSwitcherStatePageState extends State<AnimatedSwitcherStatePage> {
       key: ValueKey("empty"),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          Image.network(
-            "src",
-            width: 120,
-            height: 120,
-            color: Colors.grey[300],
+          Image.asset(
+            "assets/images/content_empty.png",
+            width: 80,
+            height: 80,
+            fit: BoxFit.cover,
           ),
           const SizedBox(height: 16),
           const Text("暂无数据"),
