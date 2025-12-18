@@ -82,25 +82,6 @@ class DetailRouteArgs {
   String toString() {
     return 'DetailRouteArgs{key: $key, id: $id, title: $title, count: $count, goods: $goods}';
   }
-
-  @override
-  bool operator ==(Object other) {
-    if (identical(this, other)) return true;
-    if (other is! DetailRouteArgs) return false;
-    return key == other.key &&
-        id == other.id &&
-        title == other.title &&
-        count == other.count &&
-        goods == other.goods;
-  }
-
-  @override
-  int get hashCode =>
-      key.hashCode ^
-      id.hashCode ^
-      title.hashCode ^
-      count.hashCode ^
-      goods.hashCode;
 }
 
 /// generated route for
@@ -172,16 +153,6 @@ class LoginRouteArgs {
   String toString() {
     return 'LoginRouteArgs{key: $key, onResult: $onResult}';
   }
-
-  @override
-  bool operator ==(Object other) {
-    if (identical(this, other)) return true;
-    if (other is! LoginRouteArgs) return false;
-    return key == other.key;
-  }
-
-  @override
-  int get hashCode => key.hashCode;
 }
 
 /// generated route for

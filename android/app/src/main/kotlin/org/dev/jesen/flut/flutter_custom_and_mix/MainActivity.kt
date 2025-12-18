@@ -20,6 +20,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import org.dev.jesen.flut.flutter_custom_and_mix.channel.ChannelRegistry
 import org.dev.jesen.flut.flutter_custom_and_mix.insert_flutter.NativeViewPlugin
 
 class MainActivity : FlutterActivity() {
@@ -44,6 +45,9 @@ class MainActivity : FlutterActivity() {
         super.configureFlutterEngine(flutterEngine)
         // 注册自定义View的插件
         flutterEngine.plugins.add(NativeViewPlugin())
+        
+        // 注册所有Channel
+        ChannelRegistry.registerWith(flutterEngine, this)
 
         /**
          * 1.MethodChannel相关：

@@ -1,5 +1,6 @@
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_custom_and_mix/communication/auth_service_test_page.dart';
 import 'package:flutter_custom_and_mix/custom/platform_view/insert_native_view.dart';
 
 import 'animation/implicitly_animated_widget/animated_container_product_card_page.dart';
@@ -82,7 +83,7 @@ class MyApp extends StatelessWidget {
           bodyMedium: TextStyle(color: Colors.black87), // 默认文本颜色
         ),
       ),
-      home: AnimatedSwitcherStatePage(),
+      home: AuthServiceTestPage(),
       debugShowCheckedModeBanner: false,
     );
   }

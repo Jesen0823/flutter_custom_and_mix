@@ -1,5 +1,10 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <uses-permission android:name="INTERNET"/>
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
+    <!-- Android 14+ 前台服务类型权限 -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_CONNECTED_DEVICE"/>
+    <!-- 可选：如果未来需要其他类型，可以添加 -->
+    <!-- <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC"/> -->
     <application
         android:label="flutter_custom_and_mix"
         android:name="${applicationName}"
@@ -32,6 +37,11 @@
         <meta-data
             android:name="flutterEmbedding"
             android:value="2" />
+        
+        <service
+            android:name=".service.AuthService"
+            android:exported="false"
+            android:foregroundServiceType="connectedDevice|dataSync" />
     </application>
     <!-- Required to query activities that can process text, see:
          https://developer.android.com/training/package-visibility and
