@@ -206,6 +206,10 @@ class AuthService : Service(),
 
     // WebViewManager.WebViewCallback implementation
 
+    override fun onPageStarted(url: String?) {
+        // Handle page started event if needed
+    }
+
     override fun onPageFinished(url: String?) {
         serviceCallback?.onWebViewLoaded()
         // 页面加载完成后自动识别二维码
@@ -224,6 +228,14 @@ class AuthService : Service(),
 
     override fun onAuthSuccess(token: String) {
         serviceCallback?.onAuthSuccess(token)
+    }
+
+    override fun onAuthSuccess(token: String, userInfo: Map<String, Any>?) {
+        serviceCallback?.onAuthSuccess(token)
+    }
+
+    override fun onJsFunctionCalled(functionName: String, params: Map<String, Any>?) {
+        // Handle JS function calls if needed
     }
 
     override fun onMessageReceived(message: String) {

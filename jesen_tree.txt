@@ -1,0 +1,39 @@
+文件夹 PATH 列表
+卷序列号为 3857-3123
+D:\FLUTTER\FLUTTERPROJECTS_MAIN\FLUTTER_CUSTOM_AND_MIX\ANDROID\APP\SRC\MAIN\KOTLIN\ORG\DEV\JESEN
+└─flut
+    └─flutter_custom_and_mix
+        │  MainActivity.kt
+        │  MyApplication.kt
+        │  
+        ├─channel
+        │  │  ChannelError.kt
+        │  │  ChannelGson.kt
+        │  │  ChannelRegistry.kt
+        │  │  
+        │  ├─auth
+        │  │      AuthServiceMethodChannel.kt
+        │  │      
+        │  ├─entity
+        │  │      UserEntity.kt
+        │  │      
+        │  └─user
+        │          PushEventChannel.kt
+        │          UserMethodChannel.kt
+        │          
+        ├─insert_flutter
+        │      NativeCustomView.kt
+        │      NativeViewFactory.kt
+        │      NativeViewPlugin.kt
+        │      
+        ├─service
+        │      AuthService.kt
+        │      
+        └─util
+            │  FlutterEngineManager.kt
+            │  
+            └─webview
+                    JsInterfaceManager.kt
+                    QrCodeDetector.kt
+                    WebViewManager.kt
+                    
