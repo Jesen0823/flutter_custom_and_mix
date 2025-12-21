@@ -107,7 +107,7 @@ class WebViewManager(
             
             override fun onReceivedError(view: WebView?, request: WebResourceRequest?, error: WebResourceError?) {
                 super.onReceivedError(view, request, error)
-                val errorMessage = "WebView错误: ${error?.description}"
+                val errorMessage = "WebView错误: ${error?.toString()}"
                 webViewCallback.onReceivedError(errorMessage)
             }
             

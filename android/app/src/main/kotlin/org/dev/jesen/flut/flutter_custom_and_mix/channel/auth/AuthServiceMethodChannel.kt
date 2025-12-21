@@ -9,6 +9,7 @@ import io.flutter.plugin.common.BinaryMessenger
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
 import org.dev.jesen.flut.flutter_custom_and_mix.service.AuthService
+import org.dev.jesen.flut.flutter_custom_and_mix.service.MiddleWebSocketService
 
 /**
  * AuthService的MethodChannel实现，用于Flutter与AuthService通信
@@ -16,7 +17,7 @@ import org.dev.jesen.flut.flutter_custom_and_mix.service.AuthService
 object AuthServiceMethodChannel {
     private const val CHANNEL_NAME = "org.dev.jesen.flut.flutter_custom_and_mix/auth_service"
     private var context: Context? = null
-    private var authService: AuthService? = null
+    private var webSocketService: MiddleWebSocketService? = null
     private var channel: MethodChannel? = null
     private var isBound = false
 
@@ -60,24 +61,25 @@ object AuthServiceMethodChannel {
 
         val serviceIntent = Intent(context, AuthService::class.java)
         context.bindService(serviceIntent, serviceConnection, Context.BIND_AUTO_CREATE)
+        webSocketService?.startAuthService()
         result.success(true)
     }
 
     /**
      * 加载指定URL
      */
-    private fun loadUrl(call: MethodCall, result: MethodChannel.Result) {
+    fun loadUrl(call: MethodCall, result: MethodChannel.Result) {
         val url = call.argument<String>("url") ?: run {
             result.error("URL_NULL", "URL is null", null)
             return
         }
 
-        if (!isBound || authService == null) {
+        if (!isBound || webSocketService == null) {
             result.error("SERVICE_NOT_BOUND", "AuthService is not bound", null)
             return
         }
 
-        authService?.loadUrl(url)
+        webSocketService?.loadUrl(url)
         result.success(true)
     }
 
@@ -86,9 +88,10 @@ object AuthServiceMethodChannel {
      */
     private fun stopAuthService(result: MethodChannel.Result) {
         if (isBound) {
+            webSocketService?.stopAuthService()
             context?.unbindService(serviceConnection)
             isBound = false
-            authService = null
+            webSocketService = null
         }
         result.success(true)
     }
@@ -133,12 +136,12 @@ object AuthServiceMethodChannel {
      */
     private val serviceConnection = object : ServiceConnection {
         override fun onServiceConnected(name: ComponentName?, serviceBinder: IBinder?) {
-                val binder = serviceBinder as AuthService.LocalBinder
-                authService = binder.getService()
+                val binder = serviceBinder as MiddleWebSocketService.LocalBinder
+            webSocketService = binder.getService()
             isBound = true
             
             // 设置AuthService的回调
-            authService?.setCallback(object : AuthService.ServiceCallback {
+            webSocketService?.setCallback(object : MiddleWebSocketService.ServiceCallback {
                 override fun onWebViewLoaded() {
                     sendWebViewLoaded()
                 }
@@ -167,7 +170,7 @@ object AuthServiceMethodChannel {
 
         override fun onServiceDisconnected(name: ComponentName?) {
             isBound = false
-            authService = null
+            webSocketService = null
         }
     }
 }

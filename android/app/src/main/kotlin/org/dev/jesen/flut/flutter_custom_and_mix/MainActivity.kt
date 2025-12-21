@@ -1,5 +1,6 @@
 package org.dev.jesen.flut.flutter_custom_and_mix
 
+import android.content.pm.PackageManager
 import android.graphics.Color
 import android.os.Build
 import android.os.Bundle
@@ -22,10 +23,13 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import org.dev.jesen.flut.flutter_custom_and_mix.channel.ChannelRegistry
 import org.dev.jesen.flut.flutter_custom_and_mix.insert_flutter.NativeViewPlugin
+import org.dev.jesen.flut.flutter_custom_and_mix.util.PermissionUtils
 
 class MainActivity : FlutterActivity() {
     private lateinit var methodChannel: MethodChannel
     private lateinit var eventChannel: EventChannel
+
+    private var hasPermission = false // 是否有权限
 
     // 与Flutter端一致的Channel名称
     private val METHOD_CHANNEL_NAME = "org.dev.jesen.flut.flutter_custom_and_mix/native_method"
@@ -33,6 +37,7 @@ class MainActivity : FlutterActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        PermissionUtils.requestNotificationPermission(this@MainActivity)
     }
 
     override fun onAttachedToWindow() {
@@ -47,7 +52,7 @@ class MainActivity : FlutterActivity() {
         flutterEngine.plugins.add(NativeViewPlugin())
         
         // 注册所有Channel
-        ChannelRegistry.registerWith(flutterEngine, this)
+        ChannelRegistry.registerWith(flutterEngine, this.applicationContext)
 
         /**
          * 1.MethodChannel相关：
@@ -105,6 +110,18 @@ class MainActivity : FlutterActivity() {
             }
 
         })
+    }
+
+    // 处理权限申请结果
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<String?>,
+        grantResults: IntArray
+    ) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (requestCode == PermissionUtils.REQUEST_POST_NOTIFICATIONS) {
+            hasPermission = grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED
+        }
     }
 
     private fun addNativeButton() {
