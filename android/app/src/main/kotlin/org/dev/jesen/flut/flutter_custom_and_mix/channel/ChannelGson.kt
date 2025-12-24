@@ -1,5 +1,8 @@
 package org.dev.jesen.flut.flutter_custom_and_mix.channel
 
+import com.google.gson.GsonBuilder
+import com.google.gson.reflect.TypeToken
+
 // 序列化工具（使用Gson）
  object ChannelGson {
      private val gson = GsonBuilder()

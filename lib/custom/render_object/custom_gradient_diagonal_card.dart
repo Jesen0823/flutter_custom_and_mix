@@ -306,7 +306,7 @@ class RenderCustomGradientDiagonalCard extends RenderBox
   @override
   bool get alwaysNeedsCompositing{
     // 判断自身是否需要合成：有渐变Shader则需要（动态判断，而非硬编码true）
-    final selfNeedsCompositing = _gradient != null && _gradient.colors.isNotEmpty;
+    final selfNeedsCompositing = _gradient.colors.isNotEmpty;
     // 继承子节点的合成需求,子节点需要则父节点也需要
     final childNeedsCompositing = child?.alwaysNeedsCompositing ?? false;
     // 最终结果：自身需要||子节点需要 → 整体需要合成

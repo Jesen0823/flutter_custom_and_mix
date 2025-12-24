@@ -1,24 +1,23 @@
-package org.dev.jesen.flut.flutter_custom_and_mix.websocket.callback;
+package org.dev.jesen.flut.flutter_custom_and_mix.websocket.callback
 
 /**
  * WebSocket服务器回调接口
  * 用于处理WebSocket服务器的各种事件
  */
-public interface WebSocketServerCallback {
-    
+interface WebSocketServerCallback {
     /**
      * 客户端连接打开回调
      * @param clientId 客户端标识
      */
-    void onClientConnected(String clientId);
-    
+    fun onClientConnected(clientId: String?)
+
     /**
      * 客户端消息接收回调
      * @param clientId 客户端标识
      * @param message 接收到的消息
      */
-    void onClientMessage(String clientId, String message);
-    
+    fun onClientMessage(clientId: String?, message: String?)
+
     /**
      * 客户端连接关闭回调
      * @param clientId 客户端标识
@@ -26,28 +25,28 @@ public interface WebSocketServerCallback {
      * @param reason 关闭原因
      * @param remote 是否是远程关闭
      */
-    void onClientDisconnected(String clientId, int code, String reason, boolean remote);
-    
+    fun onClientDisconnected(clientId: String?, code: Int, reason: String?, remote: Boolean)
+
     /**
      * 客户端连接错误回调
      * @param clientId 客户端标识
      * @param ex 异常信息
      */
-    void onClientError(String clientId, Exception ex);
-    
+    fun onClientError(clientId: String?, ex: Exception?)
+
     /**
      * 服务器启动成功回调
      */
-    void onServerStarted();
-    
+    fun onServerStarted()
+
     /**
      * 服务器关闭回调
      */
-    void onServerStopped();
-    
+    fun onServerStopped()
+
     /**
      * 服务器错误回调
      * @param ex 异常信息
      */
-    void onServerError(Exception ex);
+    fun onServerError(ex: Exception?)
 }

@@ -48,7 +48,7 @@ class AuthService : Service(), WebViewManager.WebViewCallback, JsInterfaceManage
         initNotification()
 
         // 2. 初始化并启动WebSocket服务器管理器
-        val serverConfig: WebSocketConfig.ServerConfig? =
+        val serverConfig: WebSocketConfig.ServerConfig =
             WebSocketConfig.createDefaultServerConfig(PORT)
         webSocketServerManager = WebSocketServerManager(serverConfig, this)
         webSocketServerManager!!.startServer()

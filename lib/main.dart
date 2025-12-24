@@ -10,6 +10,8 @@ import 'animation/implicitly_animated_widget/animated_size_bubble_page.dart';
 import 'animation/implicitly_animated_widget/animated_switcher_state_page.dart';
 import 'auto_router/router/app_router.dart';
 import 'auto_router/router/router_guards.dart';
+import 'communication/communication_app.dart';
+import 'communication/core/helpers/hive_helper.dart';
 import 'communication/flut_call_native_page.dart';
 import 'custom/example/custom_gradient_diagonal_card_example.dart';
 import 'custom/example/custom_tag_flow_layout_example.dart';
@@ -22,10 +24,19 @@ import 'keys/unique_key/unique_verify_code_page.dart';
 // 全局路由实例（企业级：通过Provider管理，避免重复创建）
 final appRouter = AppRouter();
 
-void main() {
-  runApp(const MyApp());
+//void main() {
+  //runApp(const MyApp());
+
   //runApp(const RouterApp());
+
   //runApp(const GlobalKeyLoginPageExampleApp());
+//}
+
+void main() async{
+  WidgetsFlutterBinding.ensureInitialized();
+  // 初始化Hive
+  await HiveHelper().initHive();
+  runApp(const CommunicationApp());
 }
 
 class RouterApp extends StatelessWidget {

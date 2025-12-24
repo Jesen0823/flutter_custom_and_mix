@@ -5,6 +5,8 @@ import android.os.Looper
 import android.util.Log
 import org.dev.jesen.flut.flutter_custom_and_mix.websocket.config.WebSocketConfig
 import org.dev.jesen.flut.flutter_custom_and_mix.websocket.callback.WebSocketClientCallback
+import org.java_websocket.client.WebSocketClient
+import org.java_websocket.handshake.ServerHandshake
 import java.net.URI
 import java.net.URISyntaxException
 import java.util.concurrent.Executors

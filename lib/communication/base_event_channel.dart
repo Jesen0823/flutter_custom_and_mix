@@ -2,7 +2,6 @@ import 'dart:async';
 
 import 'package:flutter/services.dart';
 import 'package:flutter_custom_and_mix/communication/utils/app_logger.dart';
-import 'package:logger/logger.dart';
 
 import 'base/base_serializable.dart';
 import 'channel_error.dart';

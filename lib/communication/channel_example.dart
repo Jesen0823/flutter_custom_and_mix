@@ -3,7 +3,6 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_custom_and_mix/communication/base_message_channel.dart';
 import 'package:flutter_custom_and_mix/communication/model/chat_message_entity.dart';
-import 'package:flutter_custom_and_mix/communication/utils/app_logger.dart';
 
 import 'base_event_channel.dart';
 import 'channel_manager.dart';

@@ -1,6 +1,7 @@
 package org.dev.jesen.flut.flutter_custom_and_mix.channel.user
 
 import android.content.Context
+import com.google.gson.Gson
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.BinaryMessenger
 import io.flutter.plugin.common.MethodCall
