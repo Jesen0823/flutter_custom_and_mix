@@ -1,13 +1,15 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_custom_and_mix/communication/bindings/com_home_binding.dart';
+import 'package:flutter_custom_and_mix/communication/bindings/user_info_binding.dart';
 import 'package:flutter_custom_and_mix/communication/pages/splash_page.dart';
 import 'package:flutter_custom_and_mix/communication/pages/unbind_page.dart';
 import 'package:flutter_custom_and_mix/communication/pages/com_home_page.dart';
+import 'package:flutter_custom_and_mix/communication/pages/user_info_page.dart';
 import 'package:get/get.dart';
 import 'bindings/splash_binding.dart';
 import 'bindings/unbind_binding.dart';
 import 'core/constants/app_routes.dart';
 import 'core/constants/app_styles.dart';
-import 'core/helpers/hive_helper.dart';
 
 class CommunicationApp extends StatelessWidget {
   const CommunicationApp({super.key});
@@ -41,7 +43,14 @@ class CommunicationApp extends StatelessWidget {
         GetPage(
           name: AppRoutes.comHome,
           page: () => const ComHomePage(),
+          binding: ComHomeBinding(),
         ),
+        GetPage(
+          name: AppRoutes.userInfo,
+          page: () => const UserInfoPagePage(),
+          binding: UserInfoBinding(),
+        ),
+
       ],
     );
   }

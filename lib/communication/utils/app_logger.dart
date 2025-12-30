@@ -65,8 +65,23 @@ class AppLogger {
   void w(String message, {dynamic error, StackTrace? stackTrace}) =>
       _logger.w(message, error: error, stackTrace: stackTrace);
 
-  void e(String message, {dynamic error, StackTrace? stackTrace}) =>
-      _logger.e('[${DateTime.now()}] $message', error: error, stackTrace: stackTrace);
+  void e(String message, {dynamic error, StackTrace? stackTrace}) {
+    try {
+      String logMessage = '[${DateTime.now()}] $message';
+      if (error != null) {
+        logMessage += ': $error';
+      }
+      if (stackTrace != null) {
+        logMessage += '\nStackTrace: $stackTrace';
+      }
+      _logger.e(logMessage);
+    } catch (logError) {
+      // 确保日志记录失败不会影响业务流程
+      if (kDebugMode) {
+        print('日志记录失败: $logError');
+      }
+    }
+  }
 
   void wtf(String message, {dynamic error, StackTrace? stackTrace}) =>
       _logger.f(message, error: error, stackTrace: stackTrace);

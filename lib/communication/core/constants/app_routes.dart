@@ -6,4 +6,6 @@ class AppRoutes {
   static const String unbind = "/unbind";
   /// 首页
   static const String comHome = "/com_home";
+  /// 用户信息
+  static const String userInfo = "/user_info";
 }

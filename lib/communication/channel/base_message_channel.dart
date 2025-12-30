@@ -2,22 +2,20 @@ import 'dart:async';
 
 import 'package:flutter/services.dart';
 import 'package:flutter_custom_and_mix/communication/utils/app_logger.dart';
+import 'base/channel_error.dart';
+import 'base/i_channel_service.dart';
 
-import 'base/base_serializable.dart';
-import 'channel_error.dart';
-import 'i_channel_service.dart';
-
-class BaseMessageChannel<T extends BaseSerializable> implements IMessageChannelService<T> {
+class BaseMessageChannel<T> implements IMessageChannelService<T> {
   final BasicMessageChannel<Object?> _channel;
   final String _channelName;
-  final T Function(Map<String, dynamic>?) _converter;
+  final T Function(dynamic) _converter;
   late final StreamController<T> _receiveController;
   bool _isDisposed = false;
   static final Map<String, BaseMessageChannel> instanceMap = {};
 
   BaseMessageChannel._({
     required String channelName,
-    required T Function(Map<String, dynamic>?) converter,
+    required T Function(dynamic) converter,
     required MessageCodec<Object?> codec,
     BasicMessageChannel<Object?>? channel,
   })  : _channelName = channelName,
@@ -33,7 +31,7 @@ class BaseMessageChannel<T extends BaseSerializable> implements IMessageChannelS
   /// 默认StandardMessageCodec
   factory BaseMessageChannel.create({
     required String channelName,
-    required T Function(Map<String, dynamic>?) converter,
+    required T Function(dynamic) converter,
     MessageCodec<Object?>? codec,
   }) {
     return instanceMap.putIfAbsent(
@@ -56,8 +54,7 @@ class BaseMessageChannel<T extends BaseSerializable> implements IMessageChannelS
     _channel.setMessageHandler((Object? message) async {
       AppLogger().v('Channel[$_channelName] 收到原生消息：$message');
       try {
-        final Map<String, dynamic> messageMap = _convertToSafeMap(message);
-        final T data = _converter(messageMap);
+        final T data = _converter(message);
         if (!_receiveController.isClosed) {
           _receiveController.add(data);
         }
@@ -77,20 +74,25 @@ class BaseMessageChannel<T extends BaseSerializable> implements IMessageChannelS
   Future<T?> sendMessage(T message) async {
     if (_isDisposed) throw StateError('Channel[$_channelName] 已销毁，无法发送消息');
     try {
-      final Map<String, dynamic> sendData = message.toJson();
+      // 直接使用消息，由用户定义的转换器处理序列化逻辑
+      final dynamic sendData = message;
+      
       AppLogger().v('Channel[$_channelName] 发送消息到原生：$sendData');
       final Object? result = await _channel.send(sendData);
-      final Map<String, dynamic> resultMap = _convertToSafeMap(result);
-
+      
+      AppLogger().v('Channel[$_channelName] 收到原生返回：$result');
+      
       // 检查原生端返回的错误码
-      if (resultMap['code'] != ChannelErrorCode.success) {
+      if (result is Map && result['code'] != null && result['code'] != ChannelErrorCode.success) {
         throw ChannelError(
           code: ChannelErrorCode.nativeError,
-          message: resultMap['message'] ?? '原生端返回未知错误',
-          extra: resultMap['extra'],
+          message: result['message'] ?? '原生端返回未知错误',
+          extra: result['extra'] as Map<String, dynamic>?,
         );
       }
-      return _converter(resultMap);
+      
+      // 使用转换器处理结果
+      return _converter(result);
     } catch (e,stack) {
       AppLogger().e('Channel[$_channelName] 消息发送失败', error: e, stackTrace: stack);
       if (e is ChannelError) rethrow;

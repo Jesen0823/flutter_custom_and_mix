@@ -1,6 +1,7 @@
-package org.dev.jesen.flut.flutter_custom_and_mix.util.webview
+package org.dev.jesen.flut.flutter_custom_and_mix.webview
 
 import android.content.Context
+import android.graphics.Bitmap
 import android.os.Build
 import android.webkit.*
 
@@ -92,7 +93,7 @@ class WebViewManager(
     private fun setupWebViewClients() {
         // 设置WebViewClient
         webView.webViewClient = object : WebViewClient() {
-            override fun onPageStarted(view: WebView?, url: String?, favicon: android.graphics.Bitmap?) {
+            override fun onPageStarted(view: WebView?, url: String?, favicon: Bitmap?) {
                 super.onPageStarted(view, url, favicon)
                 webViewCallback.onPageStarted(url)
             }

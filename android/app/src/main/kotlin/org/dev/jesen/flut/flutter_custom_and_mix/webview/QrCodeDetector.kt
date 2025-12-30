@@ -1,4 +1,4 @@
-package org.dev.jesen.flut.flutter_custom_and_mix.util.webview
+package org.dev.jesen.flut.flutter_custom_and_mix.webview
 
 import android.webkit.WebView
 import com.google.gson.Gson

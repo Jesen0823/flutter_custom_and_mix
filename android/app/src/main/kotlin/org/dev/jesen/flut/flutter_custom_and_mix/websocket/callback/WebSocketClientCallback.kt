@@ -1,5 +1,8 @@
 package org.dev.jesen.flut.flutter_custom_and_mix.websocket.callback
 
+import org.dev.jesen.flut.flutter_custom_and_mix.websocket.message.TextMessage
+import org.dev.jesen.flut.flutter_custom_and_mix.websocket.message.WebSocketMessage
+
 /**
  * WebSocket客户端回调接口
  * 用于处理WebSocket连接的各种事件
@@ -12,10 +15,19 @@ interface WebSocketClientCallback {
     fun onOpen()
     
     /**
-     * 消息接收回调
-     * @param message 接收到的消息
+     * 文本消息接收回调（兼容旧版本）
+     * @param message 接收到的文本消息
      */
-    fun onMessage(message: String)
+    fun onMessageString(message: String?) {
+        // 默认实现，将文本消息转换为WebSocketMessage
+        message?.let { onMessageString(TextMessage(it)) }
+    }
+    
+    /**
+     * WebSocket消息接收回调（支持多种消息类型）
+     * @param message 接收到的WebSocket消息
+     */
+    fun onMessageString(message: WebSocketMessage)
     
     /**
      * 连接关闭回调

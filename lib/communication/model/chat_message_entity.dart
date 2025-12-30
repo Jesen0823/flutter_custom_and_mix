@@ -1,4 +1,5 @@
-import '../base/base_serializable.dart';
+
+import '../channel/base/base_serializable.dart';
 
 class ChatMessage extends BaseSerializable {
   final String id;

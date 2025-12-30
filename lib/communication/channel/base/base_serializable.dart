@@ -1,6 +1,6 @@
 import 'package:json_annotation/json_annotation.dart';
 
-import '../channel_error.dart';
+import 'channel_error.dart';
 
 /// 序列化基类（所有入参/出参实体继承此类）
 abstract class BaseSerializable {
@@ -32,11 +32,6 @@ Map<String, dynamic> _$defaultToJson(BaseSerializable instance) {
   json = instance is JsonSerializable
       ? (instance as JsonSerializable).toJson()
       : {};
-  ///if (instance is User) {
-  //       json['id'] = instance.id;
-  //       json['name'] = instance.name;
-  //       json['age'] = instance.age;
-  //     }
   // 过滤空值，避免原生侧解析异常
   return  Map<String, dynamic>.from(json)..removeWhere((key, value) => value == null);
 }

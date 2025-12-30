@@ -1,5 +1,6 @@
-package org.dev.jesen.flut.flutter_custom_and_mix.util.webview
+package org.dev.jesen.flut.flutter_custom_and_mix.webview
 
+import android.os.Build
 import android.os.Handler
 import android.os.Looper
 import android.webkit.JavascriptInterface
@@ -120,7 +121,7 @@ class JsInterfaceManager(
     fun executeJavaScript(script: String, resultCallback: ((String?) -> Unit)? = null) {
         mainHandler.post {
             if (webView.settings.javaScriptEnabled) {
-                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.KITKAT) {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
                     webView.evaluateJavascript(script, resultCallback)
                 } else {
                     webView.loadUrl("javascript:$script")

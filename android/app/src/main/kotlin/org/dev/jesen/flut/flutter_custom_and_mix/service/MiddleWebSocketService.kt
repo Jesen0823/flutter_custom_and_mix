@@ -10,9 +10,10 @@ import android.os.IBinder
 import android.util.Log
 import androidx.core.app.NotificationCompat
 import org.dev.jesen.flut.flutter_custom_and_mix.R
-import org.dev.jesen.flut.flutter_custom_and_mix.websocket.WebSocketClientManager
 import org.dev.jesen.flut.flutter_custom_and_mix.websocket.callback.WebSocketClientCallback
+import org.dev.jesen.flut.flutter_custom_and_mix.websocket.client.WebSocketClientManager
 import org.dev.jesen.flut.flutter_custom_and_mix.websocket.config.WebSocketConfig
+import org.dev.jesen.flut.flutter_custom_and_mix.websocket.message.WebSocketMessage
 
 /**
  * 主进程，WebSocket客户端
@@ -78,7 +79,7 @@ class MiddleWebSocketService : Service(), WebSocketClientCallback {
         if(!serviceReady){
             return false
         }
-        return webSocketClientManager?.send(message)?:false
+        return webSocketClientManager?.sendString(message)?:false
     }
 
     /**
@@ -153,9 +154,15 @@ class MiddleWebSocketService : Service(), WebSocketClientCallback {
         Log.d(TAG,"连接成功（远程进程WebSocket服务器）")
     }
 
-    override fun onMessage(message: String) {
-        Log.d(TAG,"远程进程回复：$message")
-        handleWebSocketMessage(message)
+    override fun onMessageString(message: String?) {
+        Log.d(TAG,"onMessage,String,远程进程回复：$message")
+        message?.let { it
+            handleWebSocketMessage(it)
+        }
+    }
+
+    override fun onMessageString(message: WebSocketMessage) {
+        Log.d(TAG,"onMessage,WebSocketMessage,远程进程回复：$message")
     }
 
     override fun onClose(code: Int, reason: String, remote: Boolean) {

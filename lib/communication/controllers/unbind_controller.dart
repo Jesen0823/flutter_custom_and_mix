@@ -1,52 +1,113 @@
+import 'package:flutter/services.dart';
+import 'package:flutter_custom_and_mix/communication/utils/constant.dart';
 import 'package:get/get.dart';
 import '../core/constants/app_routes.dart';
-import '../core/services/api_service.dart';
 
 /// 未绑定页控制器
 class UnbindController extends GetxController {
-  final ApiService _apiService;
-  final RxBool _isLoading = true.obs; // 加载状态（响应式）
-  final RxString _imageUrl = "".obs; // 图片地址（响应式）
 
-  UnbindController(this._apiService);
+// 微信测试链接
+  final String _testUrl = "https://mp.weixin.qq.com/s/WLl1e_Ox-WcC3_gDUHZjTg";
 
-  bool get isLoading => _isLoading.value;
-  String get imageUrl => _imageUrl.value;
+  /// MethodChannel用于与AuthService通信
+  static final MethodChannel _authChannel = MethodChannel(
+    Constant.methodChannelAuth,
+  );
+
+  final RxString _status = "未启动AuthService".obs;
+
+  String get status => _status.value;
+
+  final RxList<String> _qrCodeUrls = [""].obs;
+
+  List<String> get qrCodeUrls => _qrCodeUrls.value;
+
+  final RxString _webViewStatus = "WebView未加载".obs;
+
+  String get webViewStatus => _webViewStatus.value;
 
   @override
   void onInit() {
     super.onInit();
-    _loadUnbindImage(); // 初始化时加载图片
+
+    _listenerNativeMethod();
   }
 
-  /// 加载绑定页面图片
-  Future<void> _loadUnbindImage() async {
+  Future<void> goUserInfo() async{
+    Get.toNamed(AppRoutes.userInfo);
+  }
+
+  Future<void> goComHomePage() async{
+    Get.toNamed(AppRoutes.comHome);
+  }
+
+  /// 启动AuthService
+  Future<void> startAuthService() async {
     try {
-      _isLoading.value = true;
-      final url = await _apiService.getUnbindImage();
-      _imageUrl.value = url;
-    } catch (e) {
-      // 异常处理：企业级可添加错误提示
-      _imageUrl.value = "";
-    } finally {
-      _isLoading.value = false;
+      await _authChannel.invokeMethod("startAuthService");
+      _status.value = "AuthService启动成功";
+    } on PlatformException catch (e) {
+      _status.value = "启动失败：${e.message}";
     }
   }
 
-  /// 点击刷新按钮（重新加载图片）
-  void onRefreshClick() {
-    _loadUnbindImage();
+  /// 加载微信链接
+  Future<void> loadWechatUrl() async {
+    try {
+      await _authChannel.invokeMethod("loadUrl", {"url": _testUrl});
+      _webViewStatus.value = "正在加载微信链接...";
+      _status.value = "正在识别二维码...";
+    } on PlatformException catch (e) {
+      _status.value = "加载链接失败：${e.message}";
+    }
   }
 
-  /// 点击关闭按钮（返回/跳启动页，企业级可调整逻辑）
-  void onCloseClick() {
-    Get.back(); // 关闭弹窗
-    // 若需返回首页，可使用：Get.offAllNamed(AppRoutes.home);
+  /// 停止AuthService
+  Future<void> stopAuthService() async {
+    try {
+      await _authChannel.invokeMethod("stopAuthService");
+      _status.value = "AuthService已停止";
+      _qrCodeUrls.value = [];
+      _webViewStatus.value = "WebView未加载";
+    } on PlatformException catch (e) {
+      _status.value = "停止失败：${e.message}";
+    }
   }
 
-  /// 点击绑定账号按钮（企业级可扩展绑定逻辑）
-  void onBindAccountClick() {
-    // 示例：跳首页（真实项目替换为绑定流程）
-    Get.offAllNamed(AppRoutes.comHome);
+  void _listenerNativeMethod() {
+    // 注册方法调用处理器，接收来自原生的回调
+    _authChannel.setMethodCallHandler((call) async {
+      switch (call.method) {
+        case "onWebViewLoaded":
+          _webViewStatus.value = "WebView加载完成";
+          break;
+        case "onQrCodeDetected":
+          final String qrCodeUrl = call.arguments["qrCodeUrl"];
+
+          if (!_qrCodeUrls.contains(qrCodeUrl)) {
+            _qrCodeUrls.add(qrCodeUrl);
+          }
+          _status.value = "识别到 ${_qrCodeUrls.length} 个二维码";
+
+          break;
+        case "onQrCodeLinksDetected":
+          final List<dynamic> qrCodeLinks = call.arguments["qrCodeLinks"];
+
+          _qrCodeUrls.value = qrCodeLinks
+              .map((link) => link as String)
+              .toList();
+          _status.value = "识别到 ${_qrCodeUrls.length} 个二维码";
+          break;
+        case "onError":
+          final String error = call.arguments["error"];
+          _status.value = "错误：$error";
+          break;
+        case "onAuthSuccess":
+          final String token = call.arguments["token"];
+          _status.value = "认证成功：$token";
+          break;
+      }
+      return null;
+    });
   }
 }

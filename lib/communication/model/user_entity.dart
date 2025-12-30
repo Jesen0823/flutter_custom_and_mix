@@ -1,6 +1,6 @@
 import 'package:json_annotation/json_annotation.dart';
 
-import '../base/base_serializable.dart';
+import '../channel/base/base_serializable.dart';
 
 part 'user_entity.g.dart';
 

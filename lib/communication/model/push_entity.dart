@@ -1,7 +1,7 @@
 // lib/model/push_entity.dart
 import 'package:json_annotation/json_annotation.dart';
 
-import '../base/base_serializable.dart';
+import '../channel/base/base_serializable.dart';
 
 part 'push_entity.g.dart';
 

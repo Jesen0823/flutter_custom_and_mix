@@ -1,24 +1,22 @@
-package org.dev.jesen.flut.flutter_custom_and_mix.websocket
+package org.dev.jesen.flut.flutter_custom_and_mix.websocket.server
 
 import android.util.Log
 import org.dev.jesen.flut.flutter_custom_and_mix.websocket.callback.WebSocketServerCallback
 import org.dev.jesen.flut.flutter_custom_and_mix.websocket.config.WebSocketConfig
+import org.dev.jesen.flut.flutter_custom_and_mix.websocket.message.JsonMessage
+import org.dev.jesen.flut.flutter_custom_and_mix.websocket.message.WebSocketMessage
 import org.java_websocket.WebSocket
 import org.java_websocket.handshake.ClientHandshake
 import org.java_websocket.server.WebSocketServer
 import java.net.InetSocketAddress
+import java.nio.ByteBuffer
 import java.util.concurrent.ConcurrentHashMap
 
 /**
  * WebSocket服务器管理器
  * 封装WebSocket服务器的通用逻辑，包括服务器启动、停止、客户端连接管理等
  */
-class WebSocketServerManager
-/**
- * 构造函数
- * @param config 服务器配置
- * @param callback 回调接口
- */(
+class WebSocketServerManager(
     private val config: WebSocketConfig.ServerConfig,
     private val callback: WebSocketServerCallback
 ) {
@@ -68,8 +66,22 @@ class WebSocketServerManager
 
                 override fun onMessage(conn: WebSocket, message: String?) {
                     val clientId = getClientId(conn)
-                    Log.d(TAG, "Received message from " + clientId + ": " + message)
-                    callback.onClientMessage(clientId, message)
+                    Log.d(TAG, "Received text message from $clientId: $message")
+                    callback.onClientMessageString(clientId, message)
+                }
+
+                override fun onMessage(conn: WebSocket, message: ByteBuffer?) {
+                    val clientId = getClientId(conn)
+                    try {
+                        val webSocketMessage: WebSocketMessage = WebSocketMessage.fromBytes(message)
+                        Log.d(
+                            TAG,
+                            "Received " + webSocketMessage.getType() + " message from " + clientId
+                        )
+                        callback.onClientMessage(clientId, webSocketMessage)
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Failed to parse message from " + clientId + ": " + e.message, e)
+                    }
                 }
 
                 override fun onError(conn: WebSocket?, ex: Exception) {
@@ -86,7 +98,7 @@ class WebSocketServerManager
             }
 
             // 启动服务器
-            webSocketServer!!.start()
+            webSocketServer?.start()
             Log.d(TAG, "WebSocket server starting on port " + config.port)
         } catch (e: Exception) {
             Log.e(TAG, "Failed to start WebSocket server", e)
@@ -113,7 +125,7 @@ class WebSocketServerManager
             clientConnections.clear()
 
             // 停止服务器
-            webSocketServer!!.stop()
+            webSocketServer?.stop()
             isServerStarted = false
             Log.d(TAG, "WebSocket server stopped")
             callback.onServerStopped()
@@ -124,16 +136,16 @@ class WebSocketServerManager
     }
 
     /**
-     * 发送消息给指定客户端
+     * 发送文本消息给指定客户端
      * @param clientId 客户端标识
-     * @param message 要发送的消息
+     * @param message 要发送的文本消息
      * @return 是否发送成功
      */
     fun sendMessageToClient(clientId: String?, message: String?): Boolean {
         val conn = clientConnections.get(clientId)
         if (conn != null && conn.isOpen()) {
             conn.send(message)
-            Log.d(TAG, "Sent message to " + clientId + ": " + message)
+            Log.d(TAG, "Sent text message to " + clientId + ": " + message)
             return true
         }
         Log.e(TAG, "Cannot send message to client " + clientId + ", connection not found or closed")
@@ -141,8 +153,50 @@ class WebSocketServerManager
     }
 
     /**
-     * 发送消息给所有客户端
-     * @param message 要发送的消息
+     * 发送WebSocket消息给指定客户端
+     * @param clientId 客户端标识
+     * @param message 要发送的WebSocket消息
+     * @return 是否发送成功
+     */
+    fun sendMessageToClient(clientId: String?, message: WebSocketMessage): Boolean {
+        val conn = clientConnections.get(clientId)
+        if (conn != null && conn.isOpen()) {
+            val bytes: ByteBuffer? = message.toBytes()
+            conn.send(bytes)
+            Log.d(TAG, "Sent " + message.getType() + " message to " + clientId)
+            return true
+        }
+        Log.e(TAG, "Cannot send message to client " + clientId + ", connection not found or closed")
+        return false
+    }
+
+    /**
+     * 发送JSON对象给指定客户端
+     * @param clientId 客户端标识
+     * @param obj 要发送的JSON对象
+     * @return 是否发送成功
+     */
+    fun sendJsonToClient(clientId: String?, obj: Any?): Boolean {
+        return obj?.let {
+            sendMessageToClient(clientId, JsonMessage(it))
+        } ?: false
+    }
+
+    /**
+     * 发送JSON字符串给指定客户端
+     * @param clientId 客户端标识
+     * @param jsonStr 要发送的JSON字符串
+     * @return 是否发送成功
+     */
+    fun sendJsonToClient(clientId: String?, jsonStr: String?): Boolean {
+        return jsonStr?.let {
+            sendMessageToClient(clientId, JsonMessage(it))
+        } ?: false
+    }
+
+    /**
+     * 发送文本消息给所有客户端
+     * @param message 要发送的文本消息
      * @return 发送成功的客户端数量
      */
     fun broadcastMessage(message: String?): Int {
@@ -153,8 +207,44 @@ class WebSocketServerManager
                 sentCount++
             }
         }
-        Log.d(TAG, "Broadcast message sent to " + sentCount + " clients: " + message)
+        Log.d(TAG, "Broadcast text message sent to " + sentCount + " clients: " + message)
         return sentCount
+    }
+
+    /**
+     * 发送WebSocket消息给所有客户端
+     * @param message 要发送的WebSocket消息
+     * @return 发送成功的客户端数量
+     */
+    fun broadcastMessage(message: WebSocketMessage): Int {
+        var sentCount = 0
+        val bytes: ByteBuffer? = message.toBytes()
+        for (conn in clientConnections.values) {
+            if (conn.isOpen()) {
+                conn.send(bytes)
+                sentCount++
+            }
+        }
+        Log.d(TAG, "Broadcast " + message.getType() + " message sent to " + sentCount + " clients")
+        return sentCount
+    }
+
+    /**
+     * 发送JSON对象给所有客户端
+     * @param obj 要发送的JSON对象
+     * @return 发送成功的客户端数量
+     */
+    fun broadcastJson(obj: Any?): Int {
+        return obj?.let { broadcastMessage(JsonMessage(it)) } ?: 0
+    }
+
+    /**
+     * 发送JSON字符串给所有客户端
+     * @param jsonStr 要发送的JSON字符串
+     * @return 发送成功的客户端数量
+     */
+    fun broadcastJson(jsonStr: String?): Int {
+        return jsonStr?.let { broadcastMessage(JsonMessage(it)) } ?: 0
     }
 
     val connectedClientCount: Int
@@ -189,7 +279,7 @@ class WebSocketServerManager
      * @return 客户端标识
      */
     private fun getClientId(conn: WebSocket): String {
-        return conn.getRemoteSocketAddress().toString()
+        return conn.remoteSocketAddress.toString()
     }
 
     /**

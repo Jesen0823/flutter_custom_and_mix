@@ -8,7 +8,10 @@ plugins {
 android {
     namespace = "org.dev.jesen.flut.flutter_custom_and_mix"
     compileSdk = flutter.compileSdkVersion
-    ndkVersion = "27.0.12077973" //flutter.ndkVersion
+    ndkVersion = flutter.ndkVersion
+
+    // 抑制NDK minSdk版本错误
+    experimentalProperties["android.ndk.suppressMinSdkVersionError"] = 21
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
@@ -31,11 +34,8 @@ android {
     }
 
     dependencies {
-        implementation("org.java-websocket:Java-WebSocket:1.5.4")
         implementation("com.google.code.gson:gson:2.10.1")
-        // Coroutine dependencies
-        implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.3")
-        implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3")
+        implementation("org.java-websocket:Java-WebSocket:1.5.4")
     }
 
     buildTypes {

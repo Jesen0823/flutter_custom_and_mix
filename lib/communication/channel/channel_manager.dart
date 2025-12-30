@@ -2,13 +2,11 @@ import 'package:flutter/services.dart';
 import 'package:flutter_custom_and_mix/communication/model/chat_message_entity.dart';
 import 'package:flutter_custom_and_mix/communication/utils/app_logger.dart';
 import 'package:flutter_custom_and_mix/communication/utils/constant.dart';
-import 'package:logger/logger.dart';
 
+import '../model/push_entity.dart';
 import 'base_event_channel.dart';
 import 'base_message_channel.dart';
 import 'base_method_channel.dart';
-import 'base/base_serializable.dart';
-import 'model/push_entity.dart';
 
 /// Channel全局管理器（初始化、销毁、获取实例）
 class ChannelManager {
@@ -41,14 +39,14 @@ class ChannelManager {
     // 鉴权模块MethodChannel
     BaseMethodChannel.create(channelName: Constant.methodChannelAuth);
     // 推送模块EventChannel
-    BaseEventChannel.create(
+    BaseEventChannel<PushEvent>.create(
       channelName: Constant.eventChannelPush,
-      converter: (json) => PushEvent.fromJson(json!),
+      converter: (dynamic json) => PushEvent.fromJson(json as Map<String, dynamic>),
     );
     // 消息模块
     BaseMessageChannel<ChatMessage>.create(
       channelName: Constant.basicChannelMsg,
-      converter: ChatMessage.fromJson,
+      converter: (dynamic json) => ChatMessage.fromJson(json as Map<String, dynamic>?),
       codec: StandardMessageCodec(),
     );
   }
@@ -59,9 +57,9 @@ class ChannelManager {
   }
 
   /// 获取EventChannel实例
-  BaseEventChannel<T> getEventChannel<T extends BaseSerializable>({
+  BaseEventChannel<T> getEventChannel<T>({
     required String channelName,
-    required T Function(Map<String, dynamic>?) converter,
+    required T Function(dynamic) converter,
   }) {
     return BaseEventChannel.create(
       channelName: channelName,
@@ -70,9 +68,9 @@ class ChannelManager {
   }
 
   /// 获取MessageChannel实例
-  BaseMessageChannel<T> getMessageChannel<T extends BaseSerializable>({
+  BaseMessageChannel<T> getMessageChannel<T>({
     required String channelName,
-    required T Function(Map<String, dynamic>?) converter,
+    required T Function(dynamic) converter,
   }) {
     return BaseMessageChannel.create(
       channelName: channelName,

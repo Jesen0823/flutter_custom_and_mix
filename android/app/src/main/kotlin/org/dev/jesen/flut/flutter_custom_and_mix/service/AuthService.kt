@@ -10,11 +10,15 @@ import android.os.IBinder
 import android.util.Log
 import androidx.core.app.NotificationCompat
 import org.dev.jesen.flut.flutter_custom_and_mix.R
-import org.dev.jesen.flut.flutter_custom_and_mix.util.webview.JsInterfaceManager
-import org.dev.jesen.flut.flutter_custom_and_mix.util.webview.WebViewManager
-import org.dev.jesen.flut.flutter_custom_and_mix.websocket.WebSocketServerManager
 import org.dev.jesen.flut.flutter_custom_and_mix.websocket.callback.WebSocketServerCallback
 import org.dev.jesen.flut.flutter_custom_and_mix.websocket.config.WebSocketConfig
+import org.dev.jesen.flut.flutter_custom_and_mix.websocket.message.JsonMessage
+import org.dev.jesen.flut.flutter_custom_and_mix.websocket.message.MessageType
+import org.dev.jesen.flut.flutter_custom_and_mix.websocket.message.TextMessage
+import org.dev.jesen.flut.flutter_custom_and_mix.websocket.message.WebSocketMessage
+import org.dev.jesen.flut.flutter_custom_and_mix.websocket.server.WebSocketServerManager
+import org.dev.jesen.flut.flutter_custom_and_mix.webview.JsInterfaceManager
+import org.dev.jesen.flut.flutter_custom_and_mix.webview.WebViewManager
 
 /**
  * 认证服务，负责处理第三方登录鉴权
@@ -50,7 +54,11 @@ class AuthService : Service(), WebViewManager.WebViewCallback, JsInterfaceManage
         // 2. 初始化并启动WebSocket服务器管理器
         val serverConfig: WebSocketConfig.ServerConfig =
             WebSocketConfig.createDefaultServerConfig(PORT)
-        webSocketServerManager = WebSocketServerManager(serverConfig, this)
+        webSocketServerManager =
+            WebSocketServerManager(
+                serverConfig,
+                this
+            )
         webSocketServerManager!!.startServer()
 
         initializeWebViewManager()
@@ -273,7 +281,7 @@ class AuthService : Service(), WebViewManager.WebViewCallback, JsInterfaceManage
         updateNotification("已连接主进程，等待消息...")
     }
 
-    override fun onClientMessage(clientId: String?, message: String?) {
+    override fun onClientMessageString(clientId: String?, message: String?) {
         Log.d(TAG, "收到主进程消息：$message")
         mClientId?.run { clientId }
         // 收到消息后，回复客户端（模拟业务逻辑）
@@ -281,6 +289,26 @@ class AuthService : Service(), WebViewManager.WebViewCallback, JsInterfaceManage
         handleWebSocketMessage(message)
         // 更新通知：收到消息
         updateNotification("收到主进程消息：$message")
+    }
+
+    override fun onClientMessage(
+        clientId: String?,
+        message: WebSocketMessage?
+    ) {
+        var response = "远程进程已收到" + message?.getType() + "消息"
+        message?.let { it
+            when (message.getType()) {
+                MessageType.TEXT -> {
+                    val textMessage: TextMessage = it as TextMessage
+                    response = "远程进程已收到文本消息：" + textMessage.getContent()
+                }
+
+                MessageType.JSON -> {
+                    val jsonMessage: JsonMessage = it as JsonMessage
+                    response = "远程进程已收到JSON消息：" + jsonMessage.getContent()
+                }
+            }
+        }
     }
 
     override fun onClientDisconnected(
@@ -315,10 +343,10 @@ class AuthService : Service(), WebViewManager.WebViewCallback, JsInterfaceManage
      */
     private fun handleWebSocketMessage(message: String?) {
         if (message != null) {
-            when (message!!) {
+            when (message) {
                 "startAuthService" -> Log.e(TAG, "handleWebSocketMessage, 已经启动")
                 "stopAuthService" -> stopService()
-                else -> loadUrl(message!!) //result.notImplemented()
+                else -> loadUrl(message) //result.notImplemented()
             }
         }
     }

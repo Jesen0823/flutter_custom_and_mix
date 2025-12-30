@@ -1,4 +1,4 @@
-package org.dev.jesen.flut.flutter_custom_and_mix.channel.auth
+package org.dev.jesen.flut.flutter_custom_and_mix.channel.methodchannel
 
 import android.content.ComponentName
 import android.content.Context
@@ -10,12 +10,13 @@ import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
 import org.dev.jesen.flut.flutter_custom_and_mix.service.AuthService
 import org.dev.jesen.flut.flutter_custom_and_mix.service.MiddleWebSocketService
+import org.dev.jesen.flut.flutter_custom_and_mix.util.Constant
 
 /**
  * AuthService的MethodChannel实现，用于Flutter与AuthService通信
  */
 object AuthServiceMethodChannel {
-    private const val CHANNEL_NAME = "org.dev.jesen.flut.flutter_custom_and_mix/auth_service"
+    private const val CHANNEL_NAME = Constant.METHOD_CHANNEL_AUTH
     private var context: Context? = null
     private var webSocketService: MiddleWebSocketService? = null
     private var channel: MethodChannel? = null
@@ -27,7 +28,6 @@ object AuthServiceMethodChannel {
     fun register(messenger: BinaryMessenger, appContext: Context) {
         context = appContext
         channel = MethodChannel(messenger, CHANNEL_NAME)
-        
         channel?.setMethodCallHandler { call, result ->
             handleMethodCall(call, result)
         }
@@ -139,7 +139,7 @@ object AuthServiceMethodChannel {
                 val binder = serviceBinder as MiddleWebSocketService.LocalBinder
             webSocketService = binder.getService()
             isBound = true
-            
+
             // 设置AuthService的回调
             webSocketService?.setCallback(object : MiddleWebSocketService.ServiceCallback {
                 override fun onWebViewLoaded() {

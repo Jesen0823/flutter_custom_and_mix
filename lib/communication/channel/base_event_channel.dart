@@ -3,14 +3,13 @@ import 'dart:async';
 import 'package:flutter/services.dart';
 import 'package:flutter_custom_and_mix/communication/utils/app_logger.dart';
 
-import 'base/base_serializable.dart';
-import 'channel_error.dart';
-import 'i_channel_service.dart';
+import 'base/channel_error.dart';
+import 'base/i_channel_service.dart';
 
-class BaseEventChannel<T extends BaseSerializable> implements IEventChannelService<T> {
+class BaseEventChannel<T> implements IEventChannelService<T> {
   final EventChannel _channel;
   final String _channelName;
-  final T Function(Map<String, dynamic>?) _converter; // 事件转换器
+  final T Function(dynamic) _converter; // 事件转换器
   final Map<String, Stream<T>> _eventStreams = {}; // 保存事件流,供外部监听
   final Map<String, StreamSubscription<T>> _streamSubscriptions = {}; // 保存订阅关系,用于取消
 
@@ -19,7 +18,7 @@ class BaseEventChannel<T extends BaseSerializable> implements IEventChannelServi
   /// 私有构造函数
   BaseEventChannel._({
     required String channelName,
-    required T Function(Map<String, dynamic>?) converter,
+    required T Function(dynamic) converter,
     EventChannel? channel,
   })  : _channelName = channelName,
         _converter = converter,
@@ -28,7 +27,7 @@ class BaseEventChannel<T extends BaseSerializable> implements IEventChannelServi
   /// 工厂方法（单例）
   factory BaseEventChannel.create({
     required String channelName,
-    required T Function(Map<String, dynamic>?) converter,
+    required T Function(dynamic) converter,
   }) {
     return instanceMap.putIfAbsent(
       channelName,
@@ -49,7 +48,7 @@ class BaseEventChannel<T extends BaseSerializable> implements IEventChannelServi
     final stream = _channel.receiveBroadcastStream()
         .map((event) {
       AppLogger().v('收到原生事件：$event');
-      return _converter(event as Map<String, dynamic>?);
+      return _converter(event);
     }).handleError((error) {
       AppLogger().e('事件流异常：${error.toString()}');
       throw ChannelError(
