@@ -5,6 +5,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.ServiceConnection
 import android.os.IBinder
+import android.util.Log
 import io.flutter.plugin.common.BinaryMessenger
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
@@ -21,6 +22,7 @@ object AuthServiceMethodChannel {
     private var webSocketService: MiddleWebSocketService? = null
     private var channel: MethodChannel? = null
     private var isBound = false
+    private const val TAG:String = "AuthMethodChannel"
 
     /**
      * 注册AuthService的MethodChannel
@@ -37,8 +39,9 @@ object AuthServiceMethodChannel {
      * 处理Flutter调用的方法
      */
     private fun handleMethodCall(call: MethodCall, result: MethodChannel.Result) {
+        Log.d(TAG,"=====handleMethodCall,method: ${call.method}")
         when (call.method) {
-            "startAuthService" -> startAuthService(result)
+            "startAuthService" -> startAuthService(call,result)
             "loadUrl" -> loadUrl(call, result)
             "stopAuthService" -> stopAuthService(result)
             else -> result.notImplemented()
@@ -48,21 +51,26 @@ object AuthServiceMethodChannel {
     /**
      * 启动AuthService并绑定
      */
-    private fun startAuthService(result: MethodChannel.Result) {
-        val context = context ?: run {
-            result.error("CONTEXT_NULL", "Context is null", null)
-            return
-        }
-
-        if (isBound) {
+    private fun startAuthService(call: MethodCall,result: MethodChannel.Result) {
+        Log.d("TAG","startAuthService:${call.method}, param:${call.arguments}")
+        try {
+            val context = context ?: run {
+                result.error("CONTEXT_NULL", "Context is null", null)
+                return
+            }
+            Log.d(TAG,"=====handleMethodCall, isBound:$isBound")
+            if (isBound) {
+                result.success(true)
+                return
+            }
+            Log.d(TAG,"=====handleMethodCall, prepare start")
+            val serviceIntent = Intent(context, MiddleWebSocketService::class.java)
+            context.bindService(serviceIntent, serviceConnection, Context.BIND_AUTO_CREATE)
+            webSocketService?.startAuthService()
             result.success(true)
-            return
+        }catch (e: Exception){
+            result.error("1003", "原生错误：${e.message}", null)
         }
-
-        val serviceIntent = Intent(context, AuthService::class.java)
-        context.bindService(serviceIntent, serviceConnection, Context.BIND_AUTO_CREATE)
-        webSocketService?.startAuthService()
-        result.success(true)
     }
 
     /**

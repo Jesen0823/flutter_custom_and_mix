@@ -6,11 +6,15 @@ import android.app.PendingIntent
 import android.app.Service
 import android.content.Intent
 import android.os.Build
+import android.os.Handler
 import android.os.IBinder
+import android.os.Looper
 import android.util.Log
 import androidx.core.app.NotificationCompat
 import org.dev.jesen.flut.flutter_custom_and_mix.R
-import org.dev.jesen.flut.flutter_custom_and_mix.websocket.callback.WebSocketServerCallback
+import org.dev.jesen.flut.flutter_custom_and_mix.util.Constant
+import org.dev.jesen.flut.flutter_custom_and_mix.websocket.callback.WebSocketClientCallback
+import org.dev.jesen.flut.flutter_custom_and_mix.websocket.client.WebSocketClientManager
 import org.dev.jesen.flut.flutter_custom_and_mix.websocket.config.WebSocketConfig
 import org.dev.jesen.flut.flutter_custom_and_mix.websocket.message.JsonMessage
 import org.dev.jesen.flut.flutter_custom_and_mix.websocket.message.MessageType
@@ -22,17 +26,19 @@ import org.dev.jesen.flut.flutter_custom_and_mix.webview.WebViewManager
 
 /**
  * 认证服务，负责处理第三方登录鉴权
- * 采用前台Service模式运行，支持与客户端绑定通信
+ * 采用前台Service模式运行
  */
 class AuthService : Service(), WebViewManager.WebViewCallback, JsInterfaceManager.JsCallback,
-    WebSocketServerCallback {
+    WebSocketClientCallback {
 
-    private var webSocketServerManager: WebSocketServerManager? = null
+    private var mWebSocketClientManager: WebSocketClientManager? = null
     private lateinit var mNotificationManager: NotificationManager
     private lateinit var mNotificationBuilder: NotificationCompat.Builder
     private var webViewManager: WebViewManager? = null
     private var jsInterfaceManager: JsInterfaceManager? = null
-    private var mClientId: String? = null // WebSocket客户端ID
+    private val webSocketUrl: String = "ws://localhost:${Constant.WEBSOCKET_PORT}" // 连接远程进程服务器
+    private var mCurrentStatus: String = "初始化中..."
+    private val mainHandle = Handler(Looper.getMainLooper())
 
     // Constants
     companion object {
@@ -42,7 +48,6 @@ class AuthService : Service(), WebViewManager.WebViewCallback, JsInterfaceManage
         private const val ACTION_STOP = "stop_service"
         private const val CHANNEL_NAME: String = "Auth跨进程通信服务" // 通知渠道名称
         private const val CHANNEL_DESCRIPTION: String = "用于主进程与远程进程的Auth通信" // 渠道描述
-        private const val PORT: Int = 8888 // WebSocket监听端口
     }
 
     override fun onCreate() {
@@ -52,17 +57,18 @@ class AuthService : Service(), WebViewManager.WebViewCallback, JsInterfaceManage
         initNotification()
 
         // 2. 初始化并启动WebSocket服务器管理器
-        val serverConfig: WebSocketConfig.ServerConfig =
-            WebSocketConfig.createDefaultServerConfig(PORT)
-        webSocketServerManager =
-            WebSocketServerManager(
-                serverConfig,
-                this
-            )
-        webSocketServerManager!!.startServer()
+        initWebSocketClient()
 
         initializeWebViewManager()
         initializeJsInterfaceManager()
+    }
+
+    private fun initWebSocketClient() {
+        val config = WebSocketConfig.ClientConfig(
+            webSocketUrl
+        )
+        mWebSocketClientManager = WebSocketClientManager(config, this)
+        mWebSocketClientManager?.connect()
     }
 
     override fun onBind(intent: Intent?): IBinder? {
@@ -80,19 +86,16 @@ class AuthService : Service(), WebViewManager.WebViewCallback, JsInterfaceManage
         super.onDestroy()
 
         // 关闭WebSocket服务器并释放资源
-        if (webSocketServerManager != null) {
-            try {
-                webSocketServerManager!!.stopServer()
-            } catch (e: java.lang.Exception) {
-                Log.d(TAG, "WebSocket服务器关闭异常：" + e.message)
-            }
-        }
+        mWebSocketClientManager?.release()
+        mWebSocketClientManager =null
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         if (intent?.action == ACTION_STOP) {
             stopSelf()
         }
+        val notificationId = NOTIFICATION_ID
+        startForeground(notificationId, mNotificationBuilder.build())
         return START_STICKY
     }
 
@@ -150,6 +153,15 @@ class AuthService : Service(), WebViewManager.WebViewCallback, JsInterfaceManage
         mNotificationManager.notify(
             NOTIFICATION_ID, mNotificationBuilder.build()
         )
+    }
+
+    /**
+     * 更新Service状态
+     */
+    private fun updateServiceStatus(status: String) {
+        mCurrentStatus = status
+        updateNotification(contentText = status)
+        Log.d(TAG, "Service 状态: $status")
     }
 
     /**
@@ -239,28 +251,34 @@ class AuthService : Service(), WebViewManager.WebViewCallback, JsInterfaceManage
     // JsInterfaceManager.JsCallback implementation
 
     override fun onAuthSuccess(token: String) {
+        updateServiceStatus("鉴权成功")
         sendWebSocketMessage("JsCallback:onAuthSuccess:$token")
     }
 
     override fun onAuthSuccess(token: String, userInfo: Map<String, Any>?) {
+        updateServiceStatus("鉴权成功")
         sendWebSocketMessage("JsCallback:onAuthSuccess:$token")
     }
 
     override fun onJsFunctionCalled(functionName: String, params: Map<String, Any>?) {
         // Handle JS function calls if needed
+        updateServiceStatus("方法${functionName}调用完成")
         sendWebSocketMessage("JsCallback:onJsFunctionCalled:$functionName")
     }
 
     override fun onMessageReceived(message: String) {
         // 不再通过此方法处理二维码链接，改用onQrCodeLinksDetected
+        updateServiceStatus("收到二维码")
         sendWebSocketMessage("JsCallback:onMessageReceived:$message")
     }
 
     override fun onError(error: String) {
+        updateServiceStatus("ERROR:$error")
         sendWebSocketMessage("JsCallback:onError:$error")
     }
 
     override fun onQrCodeLinksDetected(links: List<String>) {
+        updateServiceStatus("收到${links.size}条二维码")
         // 通知客户端检测到的所有二维码链接
         //serviceCallback?.onQrCodeLinksDetected(links)
         // 同时为了向后兼容，对每个链接调用单个通知
@@ -270,92 +288,47 @@ class AuthService : Service(), WebViewManager.WebViewCallback, JsInterfaceManage
     }
 
     /**
-     * WebSocket相关
-     * */
-    override fun onClientConnected(clientId: String?) {
-        Log.d(TAG, "主进程客户端连接成功：$clientId")
-        mClientId = clientId
-        // 向客户端发送欢迎消息
-        //webSocketServerManager!!.sendMessageToClient(clientId, "WebSocket服务器已连接（远程进程）")
-        // 更新通知：连接成功
-        updateNotification("已连接主进程，等待消息...")
-    }
-
-    override fun onClientMessageString(clientId: String?, message: String?) {
-        Log.d(TAG, "收到主进程消息：$message")
-        mClientId?.run { clientId }
-        // 收到消息后，回复客户端（模拟业务逻辑）
-        //webSocketServerManager!!.sendMessageToClient(clientId, "远程进程已收到：$message")
-        handleWebSocketMessage(message)
-        // 更新通知：收到消息
-        updateNotification("收到主进程消息：$message")
-    }
-
-    override fun onClientMessage(
-        clientId: String?,
-        message: WebSocketMessage?
-    ) {
-        var response = "远程进程已收到" + message?.getType() + "消息"
-        message?.let { it
-            when (message.getType()) {
-                MessageType.TEXT -> {
-                    val textMessage: TextMessage = it as TextMessage
-                    response = "远程进程已收到文本消息：" + textMessage.getContent()
-                }
-
-                MessageType.JSON -> {
-                    val jsonMessage: JsonMessage = it as JsonMessage
-                    response = "远程进程已收到JSON消息：" + jsonMessage.getContent()
-                }
-            }
-        }
-    }
-
-    override fun onClientDisconnected(
-        clientId: String?, code: Int, reason: String?, remote: Boolean
-    ) {
-        Log.d(TAG, "客户端断开WebSocket连接：$reason")
-        updateNotification("与主进程断开WebSocket连接：$reason")
-    }
-
-    override fun onClientError(clientId: String?, ex: Exception?) {
-        Log.e(TAG, "客户端错误：" + clientId + ", exception: " + ex!!.message)
-        updateNotification("客户端异常：" + ex.message)
-    }
-
-    override fun onServerStarted() {
-        Log.d(TAG, "WebSocket服务器已启动，监听端口：$PORT")
-        updateNotification("WebSocket服务器已启动，等待主进程连接...")
-    }
-
-    override fun onServerStopped() {
-        Log.d(TAG, "WebSocket服务器已停止")
-        updateNotification("WebSocket服务器已停止")
-    }
-
-    override fun onServerError(ex: Exception?) {
-        Log.e(TAG, "服务器错误：${ex?.message ?: ""}")
-        updateNotification("服务器异常：${ex?.message ?: ""}")
-    }
-
-    /**
      * 处理主进程的WebSocket消息
      */
-    private fun handleWebSocketMessage(message: String?) {
-        if (message != null) {
-            when (message) {
-                "startAuthService" -> Log.e(TAG, "handleWebSocketMessage, 已经启动")
-                "stopAuthService" -> stopService()
-                else -> loadUrl(message) //result.notImplemented()
+    private fun handleWebSocketMessage(message: WebSocketMessage?) {
+        if (message != null && message.getType() == MessageType.TEXT) {
+            mainHandle.post {
+                when {
+                    message.getContent() == "startAuthService" -> Log.e(TAG, "handleWebSocketMessage, 已经启动")
+                    message.getContent() == "stopAuthService" -> stopSelf()
+                    message.getContent().startsWith("http") -> loadUrl(message.getContent())
+                    else -> {}//result.notImplemented()
+                }
             }
         }
     }
 
     /**
-     * 向主进程的WebSocket发送消息
+     * 向主进程的WebSocket服务端发送消息
      */
     private fun sendWebSocketMessage(message: String) {
-        // 收到消息后，回复客户端（模拟业务逻辑）
-        webSocketServerManager?.sendMessageToClient(mClientId, message)
+        mWebSocketClientManager?.sendString(message)
+    }
+
+    override fun onOpen() {
+        Log.d(TAG, "WebSocket客户端连接成功")
+    }
+
+    override fun onMessageString(message: WebSocketMessage) {
+        sendWebSocketMessage("己收到消息:$message")
+        handleWebSocketMessage(message)
+    }
+
+    override fun onClose(code: Int, reason: String, remote: Boolean) {
+        Log.d(TAG, "WebSocket连接断开：$reason")
+    }
+
+    override fun onError(ex: Exception) {
+        Log.d(TAG, "WebSocket连接失败：${ex.message}")
+    }
+
+    override fun onConnectionStatusChanged(isConnected: Boolean) {
+        val status = if (isConnected) "已连接" else "未连接"
+        Log.d(TAG, "WebSocket连接状态：$status")
     }
 }

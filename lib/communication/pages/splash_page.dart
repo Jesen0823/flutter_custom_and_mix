@@ -15,18 +15,23 @@ class SplashPage extends GetView<SplashController> {
           fit: StackFit.expand,
           children: [
             // 背景图片
-            Image.asset(
-              "assets/images/splash_bg.png",
-              fit: BoxFit.cover,
+            Padding(
+              padding: const EdgeInsets.all(24.0),
+              child: Image.asset(
+                "assets/images/splash_bg.png",
+                fit: BoxFit.cover,
+              ),
             ),
             // 右上角倒计时
             Positioned(
               top: AppStyles.paddingLarge,
               right: AppStyles.paddingLarge,
-              child: Obx(() => Text(
-                "${controller.countDown}s",
-                style: AppStyles.countDownStyle,
-              )),
+              child: Obx(
+                () => Text(
+                  "${controller.countDown}s",
+                  style: AppStyles.countDownStyle,
+                ),
+              ),
             ),
             // 底部跳过按钮
             Positioned(
@@ -43,7 +48,9 @@ class SplashPage extends GetView<SplashController> {
                     ),
                     decoration: BoxDecoration(
                       color: AppStyles.whiteColor.withOpacity(0.8),
-                      borderRadius: BorderRadius.circular(AppStyles.radiusLarge),
+                      borderRadius: BorderRadius.circular(
+                        AppStyles.radiusLarge,
+                      ),
                     ),
                     child: Text(
                       "跳过",

@@ -26,6 +26,8 @@ abstract class WebSocketMessage {
      * 将消息转换为发送格式
      */
     abstract fun toBytes(): ByteBuffer
+
+    abstract fun getContent(): String
     
     companion object {
         val gson = Gson()
@@ -69,7 +71,7 @@ class TextMessage(private val content: String) : WebSocketMessage() {
         return ByteBuffer.wrap(content.toByteArray())
     }
     
-    fun getContent(): String {
+    override fun getContent(): String {
         return content
     }
 }
@@ -84,7 +86,7 @@ class JsonMessage(private val content: String) : WebSocketMessage() {
         return ByteBuffer.wrap(content.toByteArray())
     }
     
-    fun getContent(): String {
+    override fun getContent(): String {
         return content
     }
     

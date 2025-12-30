@@ -6,31 +6,38 @@ import android.app.Service
 import android.content.Intent
 import android.os.Binder
 import android.os.Build
+import android.os.Handler
 import android.os.IBinder
+import android.os.Looper
 import android.util.Log
 import androidx.core.app.NotificationCompat
 import org.dev.jesen.flut.flutter_custom_and_mix.R
-import org.dev.jesen.flut.flutter_custom_and_mix.websocket.callback.WebSocketClientCallback
-import org.dev.jesen.flut.flutter_custom_and_mix.websocket.client.WebSocketClientManager
+import org.dev.jesen.flut.flutter_custom_and_mix.util.Constant
+import org.dev.jesen.flut.flutter_custom_and_mix.websocket.callback.WebSocketServerCallback
 import org.dev.jesen.flut.flutter_custom_and_mix.websocket.config.WebSocketConfig
+import org.dev.jesen.flut.flutter_custom_and_mix.websocket.message.MessageType
+import org.dev.jesen.flut.flutter_custom_and_mix.websocket.message.TextMessage
 import org.dev.jesen.flut.flutter_custom_and_mix.websocket.message.WebSocketMessage
+import org.dev.jesen.flut.flutter_custom_and_mix.websocket.server.WebSocketServerManager
 
 /**
  * 主进程，WebSocket客户端
  * 使用WebSocketServerManager进行WebSocket服务管理
  */
-class MiddleWebSocketService : Service(), WebSocketClientCallback {
-    private var webSocketClientManager: WebSocketClientManager? = null
+class MiddleWebSocketService : Service(), WebSocketServerCallback {
+    private var mWebSocketServerManager: WebSocketServerManager? = null
     private var mNotificationManager: NotificationManager? = null
     private var mNotificationBuilder: NotificationCompat.Builder? = null
     private var serviceReady = false // 远程Service是否启动
 
     private val localBinder = LocalBinder()
-    private var serviceCallback: ServiceCallback?=null
+    private var serviceCallback: ServiceCallback? = null
+    private var mClientId: String? = null // WebSocket客户端ID
+    private val mainHandler = Handler(Looper.getMainLooper())
 
     companion object {
         private const val TAG = "MiddleWebSocketService"
-        private const val WEB_SOCKET_URL: String = "ws://localhost:8888" // 连接远程进程服务器
+        private const val PORT: Int = Constant.WEBSOCKET_PORT // WebSocket监听端口 // 连接远程进程服务器
         private const val NOTIFICATION_ID = 10086 // 通知唯一ID
         private const val CHANNEL_ID = "websocket_client_channel" // 通知渠道ID
         private const val CHANNEL_NAME = "WebSocket跨进程通信服务" // 通知渠道名称
@@ -47,14 +54,20 @@ class MiddleWebSocketService : Service(), WebSocketClientCallback {
         // 1. 初始化通知管理器和Builder（适配多版本）
         initNotification()
 
+        initWebSocketServer();
+
         // 启动子进程Service
         startService()
-        serviceReady = true
+    }
 
-        // 初始化WebSocket客户端管理器
-        val clientConfig = WebSocketConfig.createDefaultClientConfig(WEB_SOCKET_URL)
-        webSocketClientManager = WebSocketClientManager(clientConfig, this)
-        webSocketClientManager?.connect()
+    /**
+     * 初始化并启动WebSocket服务器
+     */
+    private fun initWebSocketServer() {
+        val serverConfig: WebSocketConfig.ServerConfig =
+            WebSocketConfig.createDefaultServerConfig(PORT)
+        mWebSocketServerManager = WebSocketServerManager(serverConfig, this)
+        mWebSocketServerManager!!.startServer()
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -75,11 +88,15 @@ class MiddleWebSocketService : Service(), WebSocketClientCallback {
     /**
      * 发送消息
      */
-    fun sendSocketMessage(message: String): Boolean{
-        if(!serviceReady){
+    fun sendSocketMessage(clientId: String, message: String): Boolean {
+        if (!serviceReady) {
             return false
         }
-        return webSocketClientManager?.sendString(message)?:false
+        if (mWebSocketServerManager?.isClientConnected(clientId) == false) {
+            Log.d(TAG, "sendSocketMessage：$clientId not connected")
+            return false
+        }
+        return mWebSocketServerManager?.sendMessageToClient(clientId, message) ?: false
     }
 
     /**
@@ -96,7 +113,7 @@ class MiddleWebSocketService : Service(), WebSocketClientCallback {
                 CHANNEL_NAME,
                 NotificationManager.IMPORTANCE_DEFAULT
             )
-            channel.setDescription(CHANNEL_DESCRIPTION)
+            channel.description = CHANNEL_DESCRIPTION
             channel.setSound(null, null) // 关闭通知声音（可选）
             // 注册渠道（API 26+必需）
             mNotificationManager!!.createNotificationChannel(channel)
@@ -117,7 +134,7 @@ class MiddleWebSocketService : Service(), WebSocketClientCallback {
         }
     }
 
-    fun startService(){
+    fun startService() {
         val intent = Intent(this, AuthService::class.java)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             // 5 秒内调用startForeground()：使用startForegroundService()启动服务后，必须在5 秒内在服务内部调用startForeground()，否则系统会停止服务并抛出 ANR 异常
@@ -125,6 +142,7 @@ class MiddleWebSocketService : Service(), WebSocketClientCallback {
         } else {
             startService(intent); // 低版本兼容
         }
+        serviceReady = true
     }
 
     /**
@@ -142,51 +160,26 @@ class MiddleWebSocketService : Service(), WebSocketClientCallback {
     override fun onDestroy() {
         super.onDestroy()
         // 释放WebSocket资源
-        webSocketClientManager?.release()
+        mWebSocketServerManager?.release()
 
         // 停止远程进程Service（可选）
         stopService(Intent(this, AuthService::class.java))
         serviceReady = false
     }
 
-    /** WebSocketClientCallback */
-    override fun onOpen() {
-        Log.d(TAG,"连接成功（远程进程WebSocket服务器）")
-    }
-
-    override fun onMessageString(message: String?) {
-        Log.d(TAG,"onMessage,String,远程进程回复：$message")
-        message?.let { it
-            handleWebSocketMessage(it)
-        }
-    }
-
-    override fun onMessageString(message: WebSocketMessage) {
-        Log.d(TAG,"onMessage,WebSocketMessage,远程进程回复：$message")
-    }
-
-    override fun onClose(code: Int, reason: String, remote: Boolean) {
-        Log.d(TAG,"连接断开：$reason")
-    }
-
-    override fun onError(ex: Exception) {
-        Log.d(TAG,"连接失败：${ex.message}")
-    }
-
-    override fun onConnectionStatusChanged(isConnected: Boolean) {
-        val status = if (isConnected) "已连接" else "未连接"
-        Log.d(TAG,"WebSocket连接状态：$status")
-    }
-
     /**
      * 处理AuthService回送事件
      * */
-    private fun handleWebSocketMessage(message: String) {
-        Log.d(TAG,"handleMessage：$message")
-        if(message.startsWith("JsCallback")){
-            serviceCallback?.onWebViewLoaded()
-        }else if(message.startsWith("WebViewClient")){
-            serviceCallback?.onQrCodeDetected("https://bpic.588ku.com/element_origin_min_pic/23/04/24/c1bbb824416621b59c4818e4de0d6bc7.jpg")
+    private fun handleWebSocketMessage(message: WebSocketMessage) {
+        Log.d(TAG, "handleMessage：$message")
+        mainHandler.post {
+            if (message.getType() == MessageType.TEXT) {
+                if (message.getContent().startsWith("JsCallback")) {
+                    serviceCallback?.onWebViewLoaded()
+                } else if (message.getContent().startsWith("WebViewClient")) {
+                    serviceCallback?.onQrCodeDetected("https://bpic.588ku.com/element_origin_min_pic/23/04/24/c1bbb824416621b59c4818e4de0d6bc7.jpg")
+                }
+            }
         }
     }
 
@@ -194,19 +187,90 @@ class MiddleWebSocketService : Service(), WebSocketClientCallback {
      * 来自Flutter的消息
      * */
     fun loadUrl(url: String) {
-        sendSocketMessage(url)
+        if (mClientId != null) {
+            sendSocketMessage(mClientId!!, url)
+        } else {
+            Log.d(TAG, "loadUrl：mClientId is null.")
+        }
     }
 
     fun startAuthService() {
-        sendSocketMessage("startAuthService")
+        sendSocketMessage(mClientId!!, "startAuthService")
     }
 
     fun stopAuthService() {
-        sendSocketMessage("stopAuthService")
+        sendSocketMessage(mClientId!!, "stopAuthService")
     }
 
     fun setCallback(callback: ServiceCallback) {
         serviceCallback = callback
+    }
+
+    /**
+     * WebSocketServerCallback
+     */
+    override fun onClientConnected(clientId: String?) {
+        Log.d(TAG, "主进程客户端连接成功：$clientId")
+        mClientId = clientId
+        // 更新通知：连接成功
+        sendSocketMessage(clientId!!, "已经连接客户端:$clientId")
+        updateNotification("主进程已连接，等待消息...")
+    }
+
+    override fun onClientMessageString(clientId: String?, message: String?) {
+        Log.d(TAG, "onClientMessageString,主进程收到客户端String消息：$message")
+        mClientId?.run { clientId }
+        message?.let {
+            handleWebSocketMessage(TextMessage(it))
+            // 更新通知：收到消息
+            updateNotification("主进程收到消息：$it")
+        }
+    }
+
+    override fun onClientMessage(
+        clientId: String?,
+        message: WebSocketMessage?
+    ) {
+        Log.d(
+            TAG,
+            "onClientMessage,主进程收到客户端WebSocketMessage消息类型：${message?.getType()?.name}"
+        )
+        mClientId?.run { clientId }
+        message?.let {
+            handleWebSocketMessage(it)
+            // 更新通知：收到消息
+            updateNotification("主进程收到消息：${it.getContent()}")
+        }
+    }
+
+    override fun onClientDisconnected(
+        clientId: String?,
+        code: Int,
+        reason: String?,
+        remote: Boolean
+    ) {
+        Log.d(TAG, "客户端断开WebSocket连接：$reason")
+        updateNotification("客户端断开WebSocket连接：$reason")
+    }
+
+    override fun onClientError(clientId: String?, ex: Exception?) {
+        Log.e(TAG, "连接客户端错误：" + clientId + ", exception: " + ex!!.message)
+        updateNotification("连接客户端错误：" + ex.message)
+    }
+
+    override fun onServerStarted() {
+        Log.d(TAG, "WebSocket服务器已启动，监听端口：$PORT")
+        updateNotification("WebSocket服务器已启动，等待客户端连接...")
+    }
+
+    override fun onServerStopped() {
+        Log.d(TAG, "WebSocket服务器已停止")
+        updateNotification("WebSocket服务器已停止")
+    }
+
+    override fun onServerError(ex: Exception?) {
+        Log.e(TAG, "服务器错误：${ex?.message ?: ""}")
+        updateNotification("服务器异常：${ex?.message ?: ""}")
     }
 
     // Callback interface for service-client communication

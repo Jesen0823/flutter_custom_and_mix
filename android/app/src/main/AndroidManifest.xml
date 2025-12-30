@@ -42,6 +42,17 @@
         <meta-data
             android:name="flutterEmbedding"
             android:value="2" />
+        <service
+            android:name=".service.AuthService"
+            android:enabled="true"
+            android:exported="false"
+            android:process=":remote"
+            android:foregroundServiceType="dataSync|connectedDevice" />
+        <service
+            android:name=".service.MiddleWebSocketService"
+            android:enabled="true"
+            android:exported="false"
+            android:foregroundServiceType="dataSync|connectedDevice" />
     </application>
     <!-- Required to query activities that can process text, see:
          https://developer.android.com/training/package-visibility and

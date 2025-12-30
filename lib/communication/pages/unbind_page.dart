@@ -40,28 +40,28 @@ class UnbindPage extends GetView<UnbindController> {
                   child: const Text("停止AuthService"),
                 ),
                 const SizedBox(height: 30),
-                Text(
+                Obx(() => Text(
                   "服务状态：${controller.status}",
                   style: const TextStyle(fontSize: 16),
                   textAlign: TextAlign.center,
-                ),
+                )),
                 const SizedBox(height: 15),
-                Text(
+                Obx(() => Text(
                   "WebView状态：${controller.webViewStatus}",
                   style: const TextStyle(fontSize: 16),
                   textAlign: TextAlign.center,
-                ),
+                )),
                 const SizedBox(height: 15),
-                Text(
+                Obx(() => Text(
                   "二维码链接：${controller.qrCodeUrls.isEmpty ? '未识别到二维码' : controller.qrCodeUrls.join('\n\n')}",
                   style: const TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
                   ),
                   textAlign: TextAlign.center,
-                ),
+                )),
                 const SizedBox(height: 20),
-                controller.qrCodeUrls.isNotEmpty
+                Obx(() => controller.qrCodeUrls.isNotEmpty
                     ? Column(
                         children: controller.qrCodeUrls
                             .map<Widget>(
@@ -85,7 +85,7 @@ class UnbindPage extends GetView<UnbindController> {
                             )
                             .toList(),
                       )
-                    : const SizedBox(),
+                    : const SizedBox()),
               ],
             ),
           ),
